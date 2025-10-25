@@ -2,6 +2,7 @@ import { ScriptManager } from './script-manager';
 import { PermissionManager } from './permissions';
 import { UpdateChecker } from './update-checker';
 import { initializeDatabase } from '@/lib/database';
+import { db } from '@/lib/database';
 import { ScriptStorage } from '@/lib/script-storage';
 
 // Initialize on install
@@ -80,8 +81,46 @@ async function handleMessage(message: any, _sender: chrome.runtime.MessageSender
     case 'CHECK_UPDATES':
       return UpdateChecker.checkScript(message.scriptId);
     
+    case 'GET_EXECUTION_LOGS':
+      return getExecutionLogs(message.filter);
+    
     default:
       throw new Error(`Unknown message type: ${message.type}`);
+  }
+}
+
+// Get execution logs for debug console
+async function getExecutionLogs(filter?: string) {
+  try {
+    let executions = await db.executions
+      .orderBy('timestamp')
+      .reverse()
+      .limit(100)
+      .toArray();
+    
+    if (filter) {
+      executions = executions.filter(e => e.scriptId === filter);
+    }
+    
+    // Get script names for each execution
+    const logs = await Promise.all(executions.map(async (execution) => {
+      const script = await db.scripts.get(execution.scriptId);
+      return {
+        id: execution.id,
+        scriptId: execution.scriptId,
+        scriptName: script?.name || 'Unknown Script',
+        url: execution.url,
+        success: execution.success,
+        error: execution.error,
+        executionTime: execution.executionTime,
+        timestamp: execution.timestamp,
+      };
+    }));
+    
+    return { logs };
+  } catch (error) {
+    console.error('Failed to get execution logs:', error);
+    return { logs: [] };
   }
 }
 

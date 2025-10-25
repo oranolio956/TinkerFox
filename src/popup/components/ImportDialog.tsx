@@ -10,6 +10,7 @@ export function ImportDialog({ onClose, onSuccess }: ImportDialogProps) {
   const [importing, setImporting] = useState(false);
   const [result, setResult] = useState<{ success: number; failed: number } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { loadScripts } = useScriptsStore();
   const { createScript } = useScriptsStore();
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -55,6 +56,8 @@ export function ImportDialog({ onClose, onSuccess }: ImportDialogProps) {
       if (importResult.success > 0) {
         // Celebration animation
         confetti();
+        // Reload scripts to show imported ones
+        await loadScripts();
         onSuccess();
       }
     } catch (error) {

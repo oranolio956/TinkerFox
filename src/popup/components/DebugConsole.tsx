@@ -28,39 +28,17 @@ export function DebugConsole() {
 
   const loadLogs = async () => {
     try {
-      // Simulate loading execution logs
-      // In a real implementation, this would fetch from the database
-      const mockLogs: ExecutionLog[] = [
-        {
-          id: '1',
-          scriptId: 'script-1',
-          scriptName: 'Example Script',
-          url: 'https://example.com',
-          success: true,
-          executionTime: 45,
-          timestamp: Date.now() - 10000,
-        },
-        {
-          id: '2',
-          scriptId: 'script-2',
-          scriptName: 'Another Script',
-          url: 'https://google.com',
-          success: false,
-          error: 'ReferenceError: undefinedVariable is not defined',
-          executionTime: 12,
-          timestamp: Date.now() - 5000,
-        },
-      ];
-
-      let filteredLogs = mockLogs;
-      if (filter !== 'all') {
-        filteredLogs = mockLogs.filter(log => log.scriptId === filter);
-      }
-
-      setLogs(filteredLogs.sort((a, b) => b.timestamp - a.timestamp));
+      const response = await chrome.runtime.sendMessage({
+        type: 'GET_EXECUTION_LOGS',
+        filter: filter !== 'all' ? filter : undefined
+      });
+      
+      const logs = response.logs || [];
+      setLogs(logs.sort((a: ExecutionLog, b: ExecutionLog) => b.timestamp - a.timestamp));
       setIsLoading(false);
     } catch (error) {
       console.error('Failed to load logs:', error);
+      setLogs([]);
       setIsLoading(false);
     }
   };
