@@ -1,12 +1,16 @@
 import { UserScript } from '../../types';
+import { useScriptsStore } from '@/lib/scripts-store';
 
 interface ScriptCardProps {
   script: UserScript;
   onToggle: () => void;
   onDelete: () => void;
+  isSelected?: boolean;
 }
 
 export function ScriptCard({ script, onToggle, onDelete }: ScriptCardProps) {
+  const { selectScript } = useScriptsStore();
+  
   const handleDelete = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (confirm(`Delete "${script.name}"?`)) {
@@ -14,8 +18,15 @@ export function ScriptCard({ script, onToggle, onDelete }: ScriptCardProps) {
     }
   };
 
+  const handleCardClick = () => {
+    selectScript(script.id);
+  };
+
   return (
-    <div className="bg-gray-800 border border-gray-700 rounded-lg p-3 hover:bg-gray-750 transition-colors">
+    <div 
+      onClick={handleCardClick}
+      className="bg-gray-800 border border-gray-700 rounded-lg p-3 hover:bg-gray-750 transition-colors cursor-pointer"
+    >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">
           <h3 className="font-medium text-white truncate">{script.name}</h3>

@@ -1,17 +1,41 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useScriptsStore } from '@/lib/scripts-store';
 import { ScriptCard } from './ScriptCard';
 import { ImportDialog } from './ImportDialog';
 
 export function ScriptList() {
-  const { scripts, createScript, deleteScript, toggleScript } = useScriptsStore();
+  const { scripts, createScript, deleteScript, toggleScript, updateScript } = useScriptsStore();
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortBy, setSortBy] = useState<'name' | 'lastRun' | 'created' | 'enabled'>('name');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [selectedIndex, setSelectedIndex] = useState(0);
 
-  const filteredScripts = scripts.filter(script =>
-    script.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    script.metadata.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const filteredScripts = scripts
+    .filter(script =>
+      script.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      script.metadata.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+    .sort((a, b) => {
+      let comparison = 0;
+      
+      switch (sortBy) {
+        case 'name':
+          comparison = a.name.localeCompare(b.name);
+          break;
+        case 'lastRun':
+          comparison = (a.lastRunAt || 0) - (b.lastRunAt || 0);
+          break;
+        case 'created':
+          comparison = a.createdAt - b.createdAt;
+          break;
+        case 'enabled':
+          comparison = Number(a.enabled) - Number(b.enabled);
+          break;
+      }
+      
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
 
   const handleCreateScript = async () => {
     const defaultCode = `// ==UserScript==
@@ -34,6 +58,51 @@ export function ScriptList() {
     await createScript(defaultCode);
   };
 
+  const handleEnableAll = async () => {
+    try {
+      const disabledScripts = scripts.filter(s => !s.enabled);
+      for (const script of disabledScripts) {
+        await toggleScript(script.id);
+      }
+    } catch (error) {
+      console.error('Failed to enable all scripts:', error);
+    }
+  };
+
+  const handleDisableAll = async () => {
+    try {
+      const enabledScripts = scripts.filter(s => s.enabled);
+      for (const script of enabledScripts) {
+        await toggleScript(script.id);
+      }
+    } catch (error) {
+      console.error('Failed to disable all scripts:', error);
+    }
+  };
+
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => Math.min(prev + 1, filteredScripts.length - 1));
+      } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => Math.max(prev - 1, 0));
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        if (filteredScripts[selectedIndex]) {
+          // Select the script and switch to editor
+          const { selectScript } = useScriptsStore.getState();
+          selectScript(filteredScripts[selectedIndex].id);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filteredScripts, selectedIndex]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Search and Actions */}
@@ -46,6 +115,42 @@ export function ScriptList() {
             onChange={(e) => setSearchQuery(e.target.value)}
             className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-sm focus:outline-none focus:border-blue-500"
           />
+        </div>
+        
+        {/* Bulk Actions */}
+        <div className="flex items-center space-x-2 mb-3">
+          <button
+            onClick={handleEnableAll}
+            className="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-xs rounded transition-colors"
+          >
+            Enable All
+          </button>
+          <button
+            onClick={handleDisableAll}
+            className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
+          >
+            Disable All
+          </button>
+        </div>
+        
+        {/* Sort Controls */}
+        <div className="flex items-center space-x-2 mb-3">
+          <select
+            value={sortBy}
+            onChange={(e) => setSortBy(e.target.value as any)}
+            className="px-2 py-1 bg-gray-800 border border-gray-600 rounded text-xs"
+          >
+            <option value="name">Name</option>
+            <option value="lastRun">Last Run</option>
+            <option value="created">Created</option>
+            <option value="enabled">Status</option>
+          </select>
+          <button
+            onClick={() => setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc')}
+            className="px-2 py-1 bg-gray-700 hover:bg-gray-600 text-white text-xs rounded transition-colors"
+          >
+            {sortOrder === 'asc' ? '↑' : '↓'}
+          </button>
         </div>
         
         <div className="flex space-x-2">
