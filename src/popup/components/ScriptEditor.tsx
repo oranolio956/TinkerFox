@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import Editor from '@monaco-editor/react';
 import { useScriptsStore } from '@/lib/scripts-store';
 
 export function ScriptEditor() {
@@ -80,8 +81,8 @@ export function ScriptEditor() {
     }
   };
 
-  const handleCodeChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setCode(e.target.value);
+  const handleCodeChange = (value: string | undefined) => {
+    setCode(value || '');
     setHasChanges(true);
   };
 
@@ -128,14 +129,39 @@ export function ScriptEditor() {
       </div>
 
       {/* Code Editor */}
-      <div className="flex-1 flex flex-col">
-        <textarea
-          ref={textareaRef}
+      <div className="flex-1">
+        <Editor
+          height="100%"
+          language="javascript"
+          theme="vs-dark"
           value={code}
           onChange={handleCodeChange}
-          className="flex-1 w-full bg-gray-900 text-white font-mono text-sm p-4 resize-none focus:outline-none"
-          placeholder="// Start writing your userscript here..."
-          spellCheck={false}
+          options={{
+            fontSize: 13,
+            fontFamily: 'Fira Code, JetBrains Mono, Consolas, monospace',
+            minimap: { enabled: true },
+            lineNumbers: 'on',
+            rulers: [80, 120],
+            wordWrap: 'on',
+            formatOnType: true,
+            formatOnPaste: true,
+            tabSize: 2,
+            insertSpaces: true,
+            scrollBeyondLastLine: false,
+            smoothScrolling: true,
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+            automaticLayout: true,
+            suggest: {
+              showKeywords: true,
+              showSnippets: true,
+            },
+            quickSuggestions: {
+              other: true,
+              comments: false,
+              strings: true,
+            },
+          }}
         />
       </div>
 

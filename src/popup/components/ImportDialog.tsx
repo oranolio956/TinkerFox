@@ -128,14 +128,21 @@ export function ImportDialog({ onClose, onSuccess }: ImportDialogProps) {
   );
 }
 
-// Simple confetti animation
+// Enhanced confetti animation
 function confetti() {
-  for (let i = 0; i < 50; i++) {
+  const colors = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4'];
+  const shapes = ['circle', 'square', 'triangle'];
+  
+  for (let i = 0; i < 100; i++) {
     const confetti = document.createElement('div');
     confetti.className = 'confetti';
     confetti.style.left = Math.random() * 100 + '%';
     confetti.style.animationDelay = Math.random() * 3 + 's';
-    confetti.style.backgroundColor = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444'][Math.floor(Math.random() * 4)];
+    confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+    confetti.style.borderRadius = shapes[Math.floor(Math.random() * shapes.length)] === 'circle' ? '50%' : '0';
+    confetti.style.width = (Math.random() * 8 + 4) + 'px';
+    confetti.style.height = confetti.style.width;
+    confetti.style.transform = `rotate(${Math.random() * 360}deg)`;
     document.body.appendChild(confetti);
     setTimeout(() => confetti.remove(), 3000);
   }
