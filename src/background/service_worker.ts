@@ -84,6 +84,15 @@ async function handleMessage(message: any, _sender: chrome.runtime.MessageSender
     case 'GET_EXECUTION_LOGS':
       return getExecutionLogs(message.filter);
     
+    case 'GM_XHR_REQUEST':
+      return handleGMXHRRequest(message.details);
+    
+    case 'GM_NOTIFICATION':
+      return handleGMNotification(message.options);
+    
+    case 'GET_SCRIPTS_FOR_URL':
+      return ScriptManager.getScriptsForUrl(message.url);
+    
     default:
       throw new Error(`Unknown message type: ${message.type}`);
   }
@@ -121,6 +130,48 @@ async function getExecutionLogs(filter?: string) {
   } catch (error) {
     console.error('Failed to get execution logs:', error);
     return { logs: [] };
+  }
+}
+
+// Handle GM_xmlhttpRequest from userscripts
+async function handleGMXHRRequest(details: any) {
+  try {
+    const response = await fetch(details.url, {
+      method: details.method || 'GET',
+      headers: details.headers || {},
+      body: details.data || undefined,
+    });
+    
+    const responseText = await response.text();
+    
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      responseText: responseText,
+      responseHeaders: Object.fromEntries(response.headers.entries()),
+    };
+  } catch (error) {
+    console.error('GM_xmlhttpRequest failed:', error);
+    return {
+      error: error instanceof Error ? error.message : String(error)
+    };
+  }
+}
+
+// Handle GM_notification from userscripts
+async function handleGMNotification(options: any) {
+  try {
+    await chrome.notifications.create({
+      type: 'basic',
+      iconUrl: 'icons/icon-48.png',
+      title: options.title || 'ScriptFlow Notification',
+      message: options.text || 'Notification from userscript',
+    });
+    
+    return { success: true };
+  } catch (error) {
+    console.error('GM_notification failed:', error);
+    return { error: error instanceof Error ? error.message : String(error) };
   }
 }
 

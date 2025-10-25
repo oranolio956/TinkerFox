@@ -54,15 +54,20 @@ export class ScriptManager {
         throw new Error('Script contains dangerous patterns');
       }
       
-      // Build injection code (wraps userscript in sandbox)
-      const injectionCode = this.buildInjectionCode(script);
+      // Load @require libraries first
+      if (script.metadata.require && script.metadata.require.length > 0) {
+        await this.loadRequiredLibraries(tabId, script.metadata.require);
+      }
       
-      // Inject via chrome.scripting API
-      await chrome.scripting.executeScript({
-        target: { tabId },
-        world: 'ISOLATED',  // Isolated world (safer than MAIN)
-        func: this.runUserScript,
-        args: [injectionCode, script.metadata.grant],
+      // Send script to content script for injection
+      await chrome.tabs.sendMessage(tabId, {
+        type: 'INJECT_SCRIPT',
+        script: {
+          id: script.id,
+          code: script.code,
+          grants: script.metadata.grant || []
+        },
+        grants: script.metadata.grant || []
       });
       
       const executionTime = performance.now() - startTime;
@@ -259,5 +264,34 @@ export class ScriptManager {
     if (!tab.url) return [];
     
     return ScriptStorage.getScriptsForUrl(tab.url);
+  }
+
+  // Load @require libraries
+  private static async loadRequiredLibraries(tabId: number, requireUrls: string[]): Promise<void> {
+    for (const url of requireUrls) {
+      try {
+        console.log(`[ScriptFlow] Loading required library: ${url}`);
+        
+        // Fetch the library
+        const response = await fetch(url);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch ${url}: ${response.status}`);
+        }
+        
+        const libraryCode = await response.text();
+        
+        // Send library to content script for injection
+        await chrome.tabs.sendMessage(tabId, {
+          type: 'INJECT_LIBRARY',
+          url: url,
+          code: libraryCode
+        });
+        
+        console.log(`[ScriptFlow] Successfully loaded library: ${url}`);
+      } catch (error) {
+        console.error(`[ScriptFlow] Failed to load library ${url}:`, error);
+        // Continue loading other libraries even if one fails
+      }
+    }
   }
 }

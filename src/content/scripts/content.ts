@@ -13,6 +13,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       sendResponse({ success: true });
       break;
       
+    case 'INJECT_LIBRARY':
+      handleLibraryInjection(message.url, message.code);
+      sendResponse({ success: true });
+      break;
+      
     case 'GM_XHR_REQUEST':
       handleGMXHRRequest(message.details, sendResponse);
       return true; // Keep channel open for async response
@@ -232,6 +237,26 @@ function handleGMNotification(options: any) {
       type: 'GM_NOTIFICATION',
       options: options
     });
+  }
+}
+
+// Inject a required library
+function handleLibraryInjection(url: string, code: string) {
+  try {
+    console.log(`[ScriptFlow] Injecting library: ${url}`);
+    
+    // Create script element for library
+    const scriptElement = document.createElement('script');
+    scriptElement.textContent = code;
+    scriptElement.setAttribute('data-scriptflow-library', url);
+    scriptElement.setAttribute('data-scriptflow-injected', 'true');
+    
+    // Inject into page
+    (document.head || document.documentElement).appendChild(scriptElement);
+    
+    console.log(`[ScriptFlow] Successfully injected library: ${url}`);
+  } catch (error) {
+    console.error(`[ScriptFlow] Failed to inject library ${url}:`, error);
   }
 }
 
