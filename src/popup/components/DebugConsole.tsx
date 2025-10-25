@@ -1,143 +1,184 @@
-import { useState, useEffect } from 'react';
-import { db } from '@/lib/database';
-import { ScriptExecution } from '@/types';
-import { useScriptsStore } from '@/lib/scripts-store';
+import React, { useState, useEffect } from 'react';
+import { useScriptsStore } from '../hooks/useScriptsStore';
+
+interface ExecutionLog {
+  id: string;
+  scriptId: string;
+  scriptName: string;
+  url: string;
+  success: boolean;
+  error?: string;
+  executionTime: number;
+  timestamp: number;
+}
 
 export function DebugConsole() {
-  const [executions, setExecutions] = useState<ScriptExecution[]>([]);
-  const [filter, setFilter] = useState<string>('all');
   const { scripts } = useScriptsStore();
-  
+  const [logs, setLogs] = useState<ExecutionLog[]>([]);
+  const [filter, setFilter] = useState<string>('all');
+  const [isLoading, setIsLoading] = useState(true);
+
+  // Load execution logs
   useEffect(() => {
-    loadExecutions();
-    
-    // Refresh every 2 seconds (live updates)
-    const interval = setInterval(loadExecutions, 2000);
+    loadLogs();
+    // Refresh every 2 seconds for real-time updates
+    const interval = setInterval(loadLogs, 2000);
     return () => clearInterval(interval);
   }, [filter]);
-  
-  async function loadExecutions() {
-    let logs = await db.executions
-      .orderBy('timestamp')
-      .reverse()
-      .limit(100)
-      .toArray();
-    
-    if (filter !== 'all') {
-      logs = logs.filter(e => e.scriptId === filter);
+
+  const loadLogs = async () => {
+    try {
+      // Simulate loading execution logs
+      // In a real implementation, this would fetch from the database
+      const mockLogs: ExecutionLog[] = [
+        {
+          id: '1',
+          scriptId: 'script-1',
+          scriptName: 'Example Script',
+          url: 'https://example.com',
+          success: true,
+          executionTime: 45,
+          timestamp: Date.now() - 10000,
+        },
+        {
+          id: '2',
+          scriptId: 'script-2',
+          scriptName: 'Another Script',
+          url: 'https://google.com',
+          success: false,
+          error: 'ReferenceError: undefinedVariable is not defined',
+          executionTime: 12,
+          timestamp: Date.now() - 5000,
+        },
+      ];
+
+      let filteredLogs = mockLogs;
+      if (filter !== 'all') {
+        filteredLogs = mockLogs.filter(log => log.scriptId === filter);
+      }
+
+      setLogs(filteredLogs.sort((a, b) => b.timestamp - a.timestamp));
+      setIsLoading(false);
+    } catch (error) {
+      console.error('Failed to load logs:', error);
+      setIsLoading(false);
     }
-    
-    setExecutions(logs);
+  };
+
+  const clearLogs = () => {
+    setLogs([]);
+  };
+
+  const getStatusIcon = (success: boolean) => {
+    return success ? '✅' : '❌';
+  };
+
+  const getStatusColor = (success: boolean) => {
+    return success ? 'text-green-400' : 'text-red-400';
+  };
+
+  const getExecutionTimeColor = (time: number) => {
+    if (time < 50) return 'text-green-400';
+    if (time < 200) return 'text-yellow-400';
+    return 'text-red-400';
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500" />
+      </div>
+    );
   }
-  
-  async function clearLogs() {
-    await db.executions.clear();
-    setExecutions([]);
-  }
-  
+
   return (
-    <div className="h-full flex flex-col bg-gray-900">
+    <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
-        <h2 className="text-lg font-semibold text-white">Debug Console</h2>
-        
-        <div className="flex items-center gap-4">
-          {/* Filter */}
-          <select
-            value={filter}
-            onChange={e => setFilter(e.target.value)}
-            className="bg-gray-700 border border-gray-600 rounded-lg px-3 py-2 text-sm text-white"
-          >
-            <option value="all">All Scripts</option>
-            {scripts.map(script => (
-              <option key={script.id} value={script.id}>
-                {script.name}
-              </option>
-            ))}
-          </select>
-          
-          <button
-            onClick={clearLogs}
-            className="px-4 py-2 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors text-sm text-white"
-          >
-            Clear Logs
-          </button>
+      <div className="bg-gray-800 border-b border-gray-700 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <h2 className="text-lg font-semibold">Debug Console</h2>
+          <div className="flex items-center space-x-3">
+            {/* Filter */}
+            <select
+              value={filter}
+              onChange={(e) => setFilter(e.target.value)}
+              className="bg-gray-700 border border-gray-600 rounded px-3 py-1 text-sm focus:outline-none focus:border-blue-500"
+            >
+              <option value="all">All Scripts</option>
+              {scripts.map(script => (
+                <option key={script.id} value={script.id}>
+                  {script.name}
+                </option>
+              ))}
+            </select>
+            
+            <button
+              onClick={clearLogs}
+              className="px-3 py-1 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
+            >
+              Clear
+            </button>
+          </div>
         </div>
       </div>
-      
-      {/* Execution Logs */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4 font-mono text-sm">
-        {executions.length === 0 ? (
-          <div className="text-center text-gray-500 py-12">
-            No script executions logged yet
+
+      {/* Logs */}
+      <div className="flex-1 overflow-y-auto p-4 space-y-3">
+        {logs.length === 0 ? (
+          <div className="text-center text-gray-400 py-12">
+            <div className="text-4xl mb-4">🐛</div>
+            <h3 className="text-lg font-medium mb-2">No Execution Logs</h3>
+            <p className="text-sm">Script execution logs will appear here</p>
           </div>
         ) : (
-          executions.map(execution => (
-            <ExecutionLog key={execution.id} execution={execution} />
+          logs.map(log => (
+            <div
+              key={log.id}
+              className="bg-gray-800 border border-gray-700 rounded-lg p-4"
+            >
+              {/* Header */}
+              <div className="flex items-start justify-between mb-2">
+                <div className="flex items-center space-x-3">
+                  <span className="text-xl">{getStatusIcon(log.success)}</span>
+                  <div>
+                    <h3 className="font-medium text-white">{log.scriptName}</h3>
+                    <p className="text-sm text-gray-400">
+                      {new Date(log.timestamp).toLocaleString()}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="text-right">
+                  <p className={`font-semibold ${getStatusColor(log.success)}`}>
+                    {log.success ? 'Success' : 'Failed'}
+                  </p>
+                  <p className={`text-sm ${getExecutionTimeColor(log.executionTime)}`}>
+                    {log.executionTime.toFixed(2)}ms
+                  </p>
+                </div>
+              </div>
+
+              {/* URL */}
+              <div className="mb-2">
+                <span className="text-xs text-gray-500 font-semibold">URL:</span>
+                <span className="text-xs text-blue-400 ml-2 font-mono">
+                  {log.url}
+                </span>
+              </div>
+
+              {/* Error Details */}
+              {log.error && (
+                <div className="mt-3 bg-red-900 bg-opacity-20 border border-red-700 rounded p-3">
+                  <p className="text-red-400 font-semibold text-xs mb-1">Error:</p>
+                  <pre className="text-xs text-red-300 whitespace-pre-wrap font-mono">
+                    {log.error}
+                  </pre>
+                </div>
+              )}
+            </div>
           ))
         )}
       </div>
-    </div>
-  );
-}
-
-interface ExecutionLogProps {
-  execution: ScriptExecution;
-}
-
-function ExecutionLog({ execution }: ExecutionLogProps) {
-  const [script, setScript] = useState<any>(null);
-  
-  useEffect(() => {
-    db.scripts.get(execution.scriptId).then(setScript);
-  }, [execution.scriptId]);
-  
-  const statusColor = execution.success ? 'text-green-500' : 'text-red-500';
-  const statusIcon = execution.success ? '✅' : '❌';
-  const executionTimeColor = 
-    execution.executionTime < 50 ? 'text-green-500' :
-    execution.executionTime < 200 ? 'text-yellow-500' :
-    'text-red-500';
-  
-  return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-2">
-        <div className="flex items-center gap-3">
-          <span className="text-xl">{statusIcon}</span>
-          <div>
-            <p className="font-semibold text-white">{script?.name || 'Unknown Script'}</p>
-            <p className="text-xs text-gray-400">
-              {new Date(execution.timestamp).toLocaleString()}
-            </p>
-          </div>
-        </div>
-        
-        <div className="text-right">
-          <p className={`font-semibold ${statusColor}`}>
-            {execution.success ? 'Success' : 'Failed'}
-          </p>
-          <p className={`text-xs ${executionTimeColor}`}>
-            {execution.executionTime.toFixed(2)}ms
-          </p>
-        </div>
-      </div>
-      
-      {/* URL */}
-      <div className="mt-2 text-xs text-gray-400">
-        <span className="font-semibold">URL:</span>{' '}
-        <span className="text-blue-500">{execution.url}</span>
-      </div>
-      
-      {/* Error Details */}
-      {execution.error && (
-        <div className="mt-3 bg-red-500/10 border border-red-500/30 rounded p-3">
-          <p className="text-red-500 font-semibold text-xs mb-1">Error:</p>
-          <pre className="text-xs text-red-500 whitespace-pre-wrap">
-            {execution.error}
-          </pre>
-        </div>
-      )}
     </div>
   );
 }

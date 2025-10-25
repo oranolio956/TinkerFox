@@ -1,111 +1,114 @@
-// import React from 'react';
-import { useScriptsStore } from '@/lib/scripts-store';
-import { UserScript } from '@/types';
+import React, { useState } from 'react';
+import { useScriptsStore } from '../hooks/useScriptsStore';
+import { ScriptCard } from './ScriptCard';
+import { ImportDialog } from './ImportDialog';
 
 export function ScriptList() {
-  const { scripts, loading } = useScriptsStore();
-  
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
-      </div>
-    );
-  }
-  
-  return (
-    <div className="h-full flex flex-col bg-gray-900">
-      {/* Header */}
-      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
-        <h2 className="text-lg font-semibold text-white">Your Scripts</h2>
-        <p className="text-sm text-gray-400">{scripts.length} scripts installed</p>
-      </div>
-      
-      {/* Script List */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {scripts.length === 0 ? (
-          <div className="text-center text-gray-500 py-12">
-            <p className="text-xl mb-2">No scripts yet</p>
-            <p className="text-sm">Create your first script or import from Tampermonkey</p>
-          </div>
-        ) : (
-          scripts.map(script => (
-            <ScriptCard key={script.id} script={script} />
-          ))
-        )}
-      </div>
-    </div>
+  const { scripts, createScript, deleteScript, toggleScript } = useScriptsStore();
+  const [showImportDialog, setShowImportDialog] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const filteredScripts = scripts.filter(script =>
+    script.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    script.metadata.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
-}
 
-interface ScriptCardProps {
-  script: UserScript;
-}
+  const handleCreateScript = async () => {
+    const defaultCode = `// ==UserScript==
+// @name         New Script
+// @namespace    http://tampermonkey.net/
+// @version      1.0.0
+// @description  A new userscript
+// @author       You
+// @match        *://*/*
+// @grant        none
+// ==/UserScript==
 
-function ScriptCard({ script }: ScriptCardProps) {
-  const { selectScript, toggleScript, deleteScript } = useScriptsStore();
-  
+(function() {
+    'use strict';
+    
+    // Your code here
+    console.log('Hello from ScriptFlow!');
+})();`;
+    
+    await createScript(defaultCode);
+  };
+
   return (
-    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
-      {/* Header */}
-      <div className="flex items-start justify-between mb-3">
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => toggleScript(script.id)}
-            className={`w-4 h-4 rounded-full border-2 transition-colors ${
-              script.enabled 
-                ? 'bg-green-500 border-green-500' 
-                : 'border-gray-500'
-            }`}
+    <div className="flex flex-col h-full">
+      {/* Search and Actions */}
+      <div className="p-4 border-b border-gray-700">
+        <div className="flex items-center space-x-2 mb-3">
+          <input
+            type="text"
+            placeholder="Search scripts..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="flex-1 px-3 py-2 bg-gray-800 border border-gray-600 rounded text-sm focus:outline-none focus:border-blue-500"
           />
-          <div>
-            <h3 className="font-semibold text-white">{script.name}</h3>
-            <p className="text-sm text-gray-400">v{script.version}</p>
-          </div>
         </div>
         
-        <div className="flex items-center gap-2">
+        <div className="flex space-x-2">
           <button
-            onClick={() => selectScript(script.id)}
-            className="px-3 py-1 bg-blue-500 rounded text-sm hover:bg-blue-600 transition-colors text-white"
+            onClick={handleCreateScript}
+            className="px-3 py-2 bg-blue-600 hover:bg-blue-700 rounded text-sm transition-colors"
           >
-            Edit
+            + New Script
           </button>
           <button
-            onClick={() => deleteScript(script.id)}
-            className="px-3 py-1 bg-red-500 rounded text-sm hover:bg-red-600 transition-colors text-white"
+            onClick={() => setShowImportDialog(true)}
+            className="px-3 py-2 bg-gray-700 hover:bg-gray-600 rounded text-sm transition-colors"
           >
-            Delete
+            Import
           </button>
         </div>
       </div>
-      
-      {/* Description */}
-      {script.metadata.description && (
-        <p className="text-sm text-gray-300 mb-3">{script.metadata.description}</p>
+
+      {/* Scripts List */}
+      <div className="flex-1 overflow-y-auto">
+        {filteredScripts.length === 0 ? (
+          <div className="p-8 text-center text-gray-400">
+            {searchQuery ? (
+              <div>
+                <p className="text-lg mb-2">No scripts found</p>
+                <p className="text-sm">Try a different search term</p>
+              </div>
+            ) : (
+              <div>
+                <p className="text-lg mb-2">No scripts yet</p>
+                <p className="text-sm mb-4">Create your first script or import from Tampermonkey</p>
+                <button
+                  onClick={handleCreateScript}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded transition-colors"
+                >
+                  Create Script
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="p-2 space-y-2">
+            {filteredScripts.map(script => (
+              <ScriptCard
+                key={script.id}
+                script={script}
+                onToggle={() => toggleScript(script.id)}
+                onDelete={() => deleteScript(script.id)}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {showImportDialog && (
+        <ImportDialog
+          onClose={() => setShowImportDialog(false)}
+          onSuccess={() => {
+            setShowImportDialog(false);
+            // Scripts will be reloaded automatically
+          }}
+        />
       )}
-      
-      {/* Metadata */}
-      <div className="flex flex-wrap gap-2 text-xs">
-        {script.metadata.match.slice(0, 2).map((pattern, idx) => (
-          <span key={idx} className="bg-gray-700 px-2 py-1 rounded text-gray-300">
-            {pattern}
-          </span>
-        ))}
-        {script.metadata.match.length > 2 && (
-          <span className="bg-gray-700 px-2 py-1 rounded text-gray-300">
-            +{script.metadata.match.length - 2} more
-          </span>
-        )}
-      </div>
-      
-      {/* Stats */}
-      <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
-        <span>Runs: {script.runCount}</span>
-        {script.lastRunAt && (
-          <span>Last run: {new Date(script.lastRunAt).toLocaleDateString()}</span>
-        )}
-      </div>
     </div>
   );
 }

@@ -1,29 +1,15 @@
-/**
- * ScriptFlow Popup Footer Component
- * 
- * Footer with status and quick actions
- */
+import React from 'react';
 
-// import React from 'react'
-import { Activity, Settings } from 'lucide-react'
-
-export function Footer(): JSX.Element {
+export function Footer() {
   return (
-    <footer className="footer">
-      <div className="footer-left">
-        <Activity size={14} />
-        <span className="footer-text">ScriptFlow Active</span>
-      </div>
-      
-      <div className="footer-right">
-        <button 
-          className="footer-button"
-          onClick={() => chrome.tabs.create({ url: chrome.runtime.getURL('dist/options/index.html') })}
-          title="Open Dashboard"
-        >
-          <Settings size={14} />
-        </button>
+    <footer className="bg-gray-800 border-t border-gray-700 px-4 py-2 text-xs text-gray-400">
+      <div className="flex items-center justify-between">
+        <span>ScriptFlow v1.0.0</span>
+        <div className="flex space-x-3">
+          <button className="hover:text-white transition-colors">Settings</button>
+          <button className="hover:text-white transition-colors">Help</button>
+        </div>
       </div>
     </footer>
-  )
+  );
 }
