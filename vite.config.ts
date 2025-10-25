@@ -18,6 +18,7 @@ export default defineConfig({
       ]
     })
   ],
+  base: './', // Use relative paths for Chrome extension
   build: {
     outDir: 'dist',
     rollupOptions: {
