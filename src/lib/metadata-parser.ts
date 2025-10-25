@@ -84,11 +84,27 @@ export function parseMetadata(code: string): ScriptMetadata {
         }
         break;
         
-      case 'run-at':
-        if (trimmedValue === 'document-start' || trimmedValue === 'document-end' || trimmedValue === 'document-idle') {
-          metadata.runAt = trimmedValue;
-        }
-        break;
+        case 'run-at':
+        case 'runAt':  // Support both formats
+          if (['document-start', 'document-end', 'document-idle'].includes(trimmedValue)) {
+            metadata.runAt = trimmedValue as any;
+          }
+          break;
+        case 'updateURL':
+          metadata.updateURL = sanitizeString(trimmedValue);
+          break;
+        case 'downloadURL':
+          metadata.downloadURL = sanitizeString(trimmedValue);
+          break;
+        case 'icon':
+          metadata.icon = sanitizeString(trimmedValue);
+          break;
+        case 'homepageURL':
+          metadata.homepageURL = sanitizeString(trimmedValue);
+          break;
+        case 'supportURL':
+          metadata.supportURL = sanitizeString(trimmedValue);
+          break;
         
       case 'noframes':
         metadata.noframes = true;
@@ -110,12 +126,11 @@ export function parseMetadata(code: string): ScriptMetadata {
 
 // Sanitize string (prevent XSS in script names)
 function sanitizeString(str: string): string {
+  // Remove control characters and limit length
   return str
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#x27;')
-    .slice(0, 200);  // Max length
+    .replace(/[\x00-\x1F\x7F-\x9F]/g, '') // Remove control chars
+    .trim()
+    .slice(0, 200); // Max length
 }
 
 // Validate version string

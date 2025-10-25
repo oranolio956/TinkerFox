@@ -26,6 +26,11 @@ export interface ScriptMetadata {
   grant: string[];               // GM_* APIs needed
   runAt: 'document-start' | 'document-end' | 'document-idle';
   noframes: boolean;             // Don't run in iframes
+  updateURL?: string;            // @updateURL
+  downloadURL?: string;          // @downloadURL
+  icon?: string;                 // @icon
+  homepageURL?: string;          // @homepageURL
+  supportURL?: string;           // @supportURL
 }
 
 export interface ScriptVersion {

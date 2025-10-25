@@ -10,6 +10,10 @@ export default defineConfig({
         {
           src: 'public/icons/*',
           dest: 'icons'
+        },
+        {
+          src: 'manifest.json',
+          dest: '.'
         }
       ]
     })
@@ -19,8 +23,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: 'src/popup/index.html',
-        background: 'src/background/service_worker.ts',
-        content: 'src/content/scripts/content.ts'
+        background: 'src/background/service_worker.ts'
       },
       output: {
         entryFileNames: (chunkInfo) => {

@@ -49,6 +49,11 @@ export class ScriptManager {
       const script = await ScriptStorage.getScript(scriptId);
       if (!script) throw new Error('Script not found');
       
+      // Validate script code for security
+      if (!this.validateScriptCode(script.code)) {
+        throw new Error('Script contains dangerous patterns');
+      }
+      
       // Build injection code (wraps userscript in sandbox)
       const injectionCode = this.buildInjectionCode(script);
       
@@ -87,6 +92,29 @@ export class ScriptManager {
       console.error(`[ScriptFlow] Failed to inject ${scriptId}:`, error);
     }
   }
+
+  // Validate script code for dangerous patterns
+  private static validateScriptCode(code: string): boolean {
+    // Check for dangerous patterns
+    const dangerousPatterns = [
+      /eval\s*\(/,
+      /Function\s*\(/,
+      /setTimeout\s*\(\s*['"`]/, // setTimeout with string
+      /setInterval\s*\(\s*['"`]/,
+      /document\.write\s*\(/,
+      /innerHTML\s*=/,
+      /outerHTML\s*=/,
+    ];
+    
+    for (const pattern of dangerousPatterns) {
+      if (pattern.test(code)) {
+        console.warn('[ScriptFlow] Dangerous pattern detected:', pattern);
+        return false;
+      }
+    }
+    
+    return true;
+  }
   
   // Build sandboxed injection code
   private static buildInjectionCode(script: UserScript): string {
@@ -117,35 +145,12 @@ export class ScriptManager {
   // This function runs in the page context
   private static runUserScript(code: string, grants: string[]) {
     try {
-      // Create GM API polyfills based on @grant
-      const GM: any = {};
+      // Build GM API as STRING that gets injected with the script
+      const gmApiCode = this.buildGMAPI(grants);
       
-      if (grants.includes('GM_getValue')) {
-        GM.getValue = (key: string, defaultValue?: any) => {
-          const stored = localStorage.getItem(`GM_${key}`);
-          return stored ? JSON.parse(stored) : defaultValue;
-        };
-      }
-      
-      if (grants.includes('GM_setValue')) {
-        GM.setValue = (key: string, value: any) => {
-          localStorage.setItem(`GM_${key}`, JSON.stringify(value));
-        };
-      }
-      
-      if (grants.includes('GM_xmlhttpRequest')) {
-        GM.xmlHttpRequest = (details: any) => {
-          // Send message to background to make request (bypasses CORS)
-          chrome.runtime.sendMessage({
-            type: 'GM_XHR',
-            details,
-          });
-        };
-      }
-      
-      // Inject code
+      // Inject GM API + script code together
       const script = document.createElement('script');
-      script.textContent = code;
+      script.textContent = gmApiCode + '\n' + code;
       script.setAttribute('data-scriptflow', 'userscript');
       (document.head || document.documentElement).appendChild(script);
       script.remove();
@@ -153,6 +158,102 @@ export class ScriptManager {
     } catch (error) {
       console.error('[ScriptFlow] Userscript execution error:', error);
     }
+  }
+
+  // Build GM API as string for injection
+  private static buildGMAPI(grants: string[]): string {
+    const gmApiParts: string[] = [];
+    
+    // Always provide GM_info
+    gmApiParts.push(`
+      const GM_info = {
+        script: {
+          name: 'ScriptFlow Script',
+          namespace: '',
+          version: '1.0.0',
+          description: '',
+          author: ''
+        },
+        scriptHandler: 'ScriptFlow',
+        version: '1.0.0'
+      };
+    `);
+    
+    // Add GM API based on grants
+    if (grants.includes('GM_getValue') || grants.includes('GM.getValue')) {
+      gmApiParts.push(`
+        const GM_getValue = function(key, defaultValue) {
+          try {
+            const stored = localStorage.getItem('GM_' + key);
+            return stored ? JSON.parse(stored) : defaultValue;
+          } catch (e) {
+            return defaultValue;
+          }
+        };
+        const GM = { getValue: GM_getValue };
+      `);
+    }
+    
+    if (grants.includes('GM_setValue') || grants.includes('GM.setValue')) {
+      gmApiParts.push(`
+        const GM_setValue = function(key, value) {
+          try {
+            localStorage.setItem('GM_' + key, JSON.stringify(value));
+          } catch (e) {
+            console.error('GM_setValue failed:', e);
+          }
+        };
+        if (typeof GM !== 'undefined') {
+          GM.setValue = GM_setValue;
+        }
+      `);
+    }
+    
+    if (grants.includes('GM_deleteValue')) {
+      gmApiParts.push(`
+        const GM_deleteValue = function(key) {
+          localStorage.removeItem('GM_' + key);
+        };
+      `);
+    }
+    
+    if (grants.includes('GM_listValues')) {
+      gmApiParts.push(`
+        const GM_listValues = function() {
+          const keys = [];
+          for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('GM_')) {
+              keys.push(key.substring(3));
+            }
+          }
+          return keys;
+        };
+      `);
+    }
+    
+    if (grants.includes('GM_xmlhttpRequest')) {
+      gmApiParts.push(`
+        const GM_xmlhttpRequest = function(details) {
+          return new Promise((resolve, reject) => {
+            chrome.runtime.sendMessage({
+              type: 'GM_XHR',
+              details: details
+            }, (response) => {
+              if (chrome.runtime.lastError) {
+                reject(chrome.runtime.lastError);
+              } else if (response && response.error) {
+                reject(response.error);
+              } else {
+                resolve(response);
+              }
+            });
+          });
+        };
+      `);
+    }
+    
+    return gmApiParts.join('\n');
   }
   
   // Get scripts that match current tab

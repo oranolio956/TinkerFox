@@ -20,7 +20,7 @@
   ],
   
   "background": {
-    "service_worker": "dist/background/service_worker.js",
+    "service_worker": "background/service_worker.js",
     "type": "module"
   },
   
@@ -37,14 +37,6 @@
   
   "options_page": "dist/options/index.html",
   
-  "content_scripts": [
-    {
-      "matches": ["<all_urls>"],
-      "js": ["dist/content/scripts/content.js"],
-      "run_at": "document_start",
-      "world": "MAIN"
-    }
-  ],
   
   "web_accessible_resources": [
     {

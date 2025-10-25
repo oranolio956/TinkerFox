@@ -20,8 +20,8 @@ export class ScriptStorage {
       lastRunAt: null,
       runCount: 0,
       version: metadata.version || '1.0.0',
-      updateUrl: null, // TODO: Add updateURL to metadata
-      downloadUrl: null, // TODO: Add downloadURL to metadata
+      updateUrl: metadata.updateURL || null,
+      downloadUrl: metadata.downloadURL || null,
     };
     
     await db.scripts.add(script);
