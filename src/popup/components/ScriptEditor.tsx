@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useScriptsStore } from '../hooks/useScriptsStore';
 
 export function ScriptEditor() {
-  const { scripts, selectedScript, selectScript, updateScript } = useScriptsStore();
+  const { selectedScript, updateScript } = useScriptsStore();
   const [code, setCode] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);

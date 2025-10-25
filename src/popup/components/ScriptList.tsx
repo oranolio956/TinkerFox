@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useScriptsStore } from '../hooks/useScriptsStore';
 import { ScriptCard } from './ScriptCard';
 import { ImportDialog } from './ImportDialog';

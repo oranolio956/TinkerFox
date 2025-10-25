@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useScriptsStore } from '../hooks/useScriptsStore';
 
 interface Command {
@@ -155,7 +155,7 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
               </div>
               
               {/* Commands */}
-              {cmds.map((cmd, idx) => {
+              {cmds.map((cmd) => {
                 const globalIndex = filteredCommands.indexOf(cmd);
                 const isSelected = globalIndex === selectedIndex;
                 

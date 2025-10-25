@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import { useState, useRef } from 'react';
 import { useScriptsStore } from '../hooks/useScriptsStore';
 
 interface ImportDialogProps {
