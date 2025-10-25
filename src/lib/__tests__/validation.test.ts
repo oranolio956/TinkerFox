@@ -99,7 +99,7 @@ describe('Message Validation', () => {
     it('should remove HTML tags', () => {
       const nameWithTags = '<script>alert(1)</script>Test Script';
       const sanitized = sanitizeScriptName(nameWithTags);
-      expect(sanitized).toBe('scriptalert(1)/scriptTest Script');
+      expect(sanitized).toBe('alert1Test Script');
     });
 
     it('should remove special characters', () => {
@@ -163,25 +163,24 @@ describe('Message Validation', () => {
 
   describe('MessageSchema', () => {
     it('should validate all message types', () => {
-      const messageTypes = [
-        'GET_ALL_SCRIPTS',
-        'GET_SCRIPTS_FOR_TAB',
-        'GET_SCRIPTS_FOR_URL',
-        'CREATE_SCRIPT',
-        'UPDATE_SCRIPT',
-        'DELETE_SCRIPT',
-        'TOGGLE_SCRIPT',
-        'INJECT_SCRIPT',
-        'INJECT_LIBRARY',
-        'GET_EXECUTION_LOGS',
-        'GM_XHR_REQUEST',
-        'GM_NOTIFICATION',
-        'PING',
-        'SCRIPT_INJECTION_ERROR',
+      const testMessages = [
+        { type: 'GET_ALL_SCRIPTS' },
+        { type: 'GET_SCRIPTS_FOR_TAB', tabId: 123 },
+        { type: 'GET_SCRIPTS_FOR_URL', url: 'https://example.com' },
+        { type: 'CREATE_SCRIPT', code: 'console.log("test");' },
+        { type: 'UPDATE_SCRIPT', id: 'test-id', code: 'console.log("test");' },
+        { type: 'DELETE_SCRIPT', id: 'test-id' },
+        { type: 'TOGGLE_SCRIPT', id: 'test-id' },
+        { type: 'INJECT_SCRIPT', script: { id: 'test-id', code: 'console.log("test");', grants: [] }, grants: [] },
+        { type: 'INJECT_LIBRARY', url: 'https://example.com', code: 'console.log("test");' },
+        { type: 'GET_EXECUTION_LOGS' },
+        { type: 'GM_XHR_REQUEST', details: { url: 'https://example.com' } },
+        { type: 'GM_NOTIFICATION', options: { text: 'test' } },
+        { type: 'PING' },
+        { type: 'SCRIPT_INJECTION_ERROR', scriptId: 'test-id', error: 'test error' },
       ];
 
-      messageTypes.forEach(type => {
-        const message = { type };
+      testMessages.forEach(message => {
         const result = MessageSchema.safeParse(message);
         expect(result.success).toBe(true);
       });

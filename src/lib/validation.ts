@@ -143,7 +143,7 @@ export function validateMessage(message: unknown): { success: true; data: any } 
     return { success: true, data: validated };
   } catch (error) {
     if (error instanceof z.ZodError) {
-      const errorMessage = error.errors.map(e => `${e.path.join('.')}: ${e.message}`).join(', ');
+      const errorMessage = error.errors?.map(e => `${e.path.join('.')}: ${e.message}`).join(', ') || 'Validation failed';
       return { success: false, error: `Validation failed: ${errorMessage}` };
     }
     return { success: false, error: 'Unknown validation error' };
@@ -158,7 +158,7 @@ export function sanitizeScriptCode(code: string): string {
 
 export function sanitizeScriptName(name: string): string {
   return name
-    .replace(/[<>]/g, '') // Remove HTML tags
+    .replace(/<[^>]*>/g, '') // Remove HTML tags
     .replace(/[^\w\s\-_.]/g, '') // Keep only alphanumeric, spaces, hyphens, underscores, dots
     .trim()
     .slice(0, 200); // Limit length
@@ -172,7 +172,10 @@ export function sanitizeUrl(url: string): string {
       throw new Error('Invalid protocol');
     }
     return parsed.toString();
-  } catch {
+  } catch (error) {
+    if (error instanceof Error && error.message === 'Invalid protocol') {
+      throw error;
+    }
     throw new Error('Invalid URL format');
   }
 }
