@@ -8,7 +8,7 @@ interface ScriptCardProps {
   isSelected?: boolean;
 }
 
-export function ScriptCard({ script, onToggle, onDelete }: ScriptCardProps) {
+export function ScriptCard({ script, onToggle, onDelete, isSelected = false }: ScriptCardProps) {
   const { selectScript } = useScriptsStore();
   
   const handleDelete = (e: React.MouseEvent) => {
@@ -25,7 +25,9 @@ export function ScriptCard({ script, onToggle, onDelete }: ScriptCardProps) {
   return (
     <div 
       onClick={handleCardClick}
-      className="bg-gray-800 border border-gray-700 rounded-lg p-3 hover:bg-gray-750 transition-colors cursor-pointer"
+      className={`bg-gray-800 border rounded-lg p-3 hover:bg-gray-750 transition-colors cursor-pointer ${
+        isSelected ? 'border-blue-500 bg-blue-900/20' : 'border-gray-700'
+      }`}
     >
       <div className="flex items-start justify-between mb-2">
         <div className="flex-1 min-w-0">

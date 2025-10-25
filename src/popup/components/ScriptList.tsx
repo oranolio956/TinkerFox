@@ -193,14 +193,15 @@ export function ScriptList() {
           </div>
         ) : (
           <div className="p-2 space-y-2">
-            {filteredScripts.map(script => (
-              <ScriptCard
-                key={script.id}
-                script={script}
-                onToggle={() => toggleScript(script.id)}
-                onDelete={() => deleteScript(script.id)}
-              />
-            ))}
+        {filteredScripts.map((script, index) => (
+          <ScriptCard
+            key={script.id}
+            script={script}
+            onToggle={() => toggleScript(script.id)}
+            onDelete={() => deleteScript(script.id)}
+            isSelected={index === selectedIndex}
+          />
+        ))}
           </div>
         )}
       </div>
