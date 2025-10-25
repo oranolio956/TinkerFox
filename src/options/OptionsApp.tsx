@@ -8,10 +8,11 @@ import React, { useState } from 'react'
 import { Dashboard } from './pages/Dashboard'
 import { ScriptsPage } from './pages/ScriptsPage'
 import { SettingsPage } from './pages/SettingsPage'
+import { FeatureSettingsPage } from './pages/FeatureSettingsPage'
 import { Sidebar } from './components/Sidebar'
 import { Header } from './components/Header'
 
-type Page = 'dashboard' | 'scripts' | 'settings' | 'help'
+type Page = 'dashboard' | 'scripts' | 'settings' | 'features' | 'help'
 
 export function OptionsApp(): JSX.Element {
   const [currentPage, setCurrentPage] = useState<Page>('dashboard')
@@ -24,6 +25,8 @@ export function OptionsApp(): JSX.Element {
         return <ScriptsPage />
       case 'settings':
         return <SettingsPage />
+      case 'features':
+        return <FeatureSettingsPage />
       case 'help':
         return <div className="help-placeholder">Help page coming soon...</div>
       default:

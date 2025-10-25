@@ -7,6 +7,7 @@
 import React, { useState, useEffect } from 'react'
 import { ScriptList } from './components/ScriptList'
 import { ScriptEditor } from './components/ScriptEditor'
+import { SchedulingPanel } from './components/SchedulingPanel'
 import { Header } from './components/Header'
 import { Footer } from './components/Footer'
 import { useScriptStore } from './hooks/useScriptStore'
@@ -14,7 +15,7 @@ import { useSettingsStore } from './hooks/useSettingsStore'
 import type { Script } from '@/types'
 
 export function App(): JSX.Element {
-  const [activeView, setActiveView] = useState<'list' | 'editor' | 'settings'>('list')
+  const [activeView, setActiveView] = useState<'list' | 'editor' | 'settings' | 'scheduling'>('list')
   const [selectedScript, setSelectedScript] = useState<Script | null>(null)
   
   const { scripts, loading, error } = useScriptStore()
@@ -78,6 +79,7 @@ export function App(): JSX.Element {
       <Header 
         onSettingsClick={() => setActiveView('settings')}
         onNewScriptClick={handleScriptCreate}
+        onSchedulingClick={() => setActiveView('scheduling')}
       />
       
       <main className="main-content">
@@ -105,6 +107,10 @@ export function App(): JSX.Element {
               Back to Scripts
             </button>
           </div>
+        )}
+        
+        {activeView === 'scheduling' && (
+          <SchedulingPanel />
         )}
       </main>
       

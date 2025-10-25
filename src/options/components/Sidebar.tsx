@@ -5,11 +5,11 @@
  */
 
 import React from 'react'
-import { BarChart3, Code, Settings, HelpCircle } from 'lucide-react'
+import { BarChart3, Code, Settings, HelpCircle, Zap } from 'lucide-react'
 
 interface SidebarProps {
   currentPage: string
-  onPageChange: (page: 'dashboard' | 'scripts' | 'settings' | 'help') => void
+  onPageChange: (page: 'dashboard' | 'scripts' | 'settings' | 'features' | 'help') => void
 }
 
 export function Sidebar({ currentPage, onPageChange }: SidebarProps): JSX.Element {
@@ -17,6 +17,7 @@ export function Sidebar({ currentPage, onPageChange }: SidebarProps): JSX.Elemen
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'scripts', label: 'Scripts', icon: Code },
     { id: 'settings', label: 'Settings', icon: Settings },
+    { id: 'features', label: 'Features', icon: Zap },
     { id: 'help', label: 'Help', icon: HelpCircle }
   ]
 

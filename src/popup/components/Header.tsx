@@ -5,14 +5,15 @@
  */
 
 import React from 'react'
-import { Settings, Plus, Code } from 'lucide-react'
+import { Settings, Plus, Code, Clock } from 'lucide-react'
 
 interface HeaderProps {
   onSettingsClick: () => void
   onNewScriptClick: () => void
+  onSchedulingClick: () => void
 }
 
-export function Header({ onSettingsClick, onNewScriptClick }: HeaderProps): JSX.Element {
+export function Header({ onSettingsClick, onNewScriptClick, onSchedulingClick }: HeaderProps): JSX.Element {
   return (
     <header className="header">
       <div className="header-left">
@@ -27,6 +28,14 @@ export function Header({ onSettingsClick, onNewScriptClick }: HeaderProps): JSX.
           title="New Script"
         >
           <Plus size={16} />
+        </button>
+        
+        <button 
+          className="header-button"
+          onClick={onSchedulingClick}
+          title="Scheduling"
+        >
+          <Clock size={16} />
         </button>
         
         <button 
