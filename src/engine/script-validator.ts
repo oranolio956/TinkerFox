@@ -352,26 +352,6 @@ export class ScriptValidator {
       warnings,
     };
   }
-
-  /**
-   * Get validation statistics
-   */
-  public getValidationStats(): {
-    totalValidations: number;
-    validScripts: number;
-    invalidScripts: number;
-    dangerousScripts: number;
-    cspViolations: number;
-  } {
-    // TODO: Implement validation statistics tracking
-    return {
-      totalValidations: 0,
-      validScripts: 0,
-      invalidScripts: 0,
-      dangerousScripts: 0,
-      cspViolations: 0,
-    };
-  }
 }
 
 // Export singleton instance

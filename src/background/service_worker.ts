@@ -14,6 +14,7 @@ import { ScriptManager } from '@/lib/script-manager'
 import { StorageManager } from '@/lib/storage-manager'
 import { TabManager } from '@/lib/tab-manager'
 import { MessageHandler } from '@/lib/message-handler'
+import { scriptExecutor, executionContextManager, performanceMonitor } from '@/engine'
 import type { Script, ScriptExecutionResult, TabInfo } from '@/types'
 
 // Initialize managers
