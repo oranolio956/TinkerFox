@@ -21,7 +21,7 @@ export function parseMetadata(code: string): ScriptMetadata {
   const lines = metadataBlock.split('\n');
   
   for (const line of lines) {
-    const match = line.match(/\/\/ @(\w+)\s+(.+)/);
+    const match = line.match(/\/\/ @([\w-]+)\s+(.+)/);
     if (!match) continue;
     
     const [, key, value] = match;
