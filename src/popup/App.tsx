@@ -1,120 +1,133 @@
-/**
- * ScriptFlow Popup Main App Component
- * 
- * Main application component for the popup interface
- */
+import { useEffect, useState } from 'react';
+import { useScriptsStore } from '@/lib/scripts-store';
+import { ScriptList } from './components/ScriptList';
+import { ScriptEditor } from './components/ScriptEditor';
+import { DebugConsole } from './components/DebugConsole';
+import { CommandPalette } from './components/CommandPalette';
 
-import React, { useState, useEffect } from 'react'
-import { ScriptList } from './components/ScriptList'
-import { ScriptEditor } from './components/ScriptEditor'
-import { SchedulingPanel } from './components/SchedulingPanel'
-import { Header } from './components/Header'
-import { Footer } from './components/Footer'
-import { useScriptStore } from './hooks/useScriptStore'
-import { useSettingsStore } from './hooks/useSettingsStore'
-import type { Script } from '@/types'
-
-export function App(): JSX.Element {
-  const [activeView, setActiveView] = useState<'list' | 'editor' | 'settings' | 'scheduling'>('list')
-  const [selectedScript, setSelectedScript] = useState<Script | null>(null)
+export function App() {
+  const [view, setView] = useState<'scripts' | 'editor' | 'debug'>('scripts');
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const { loadScripts, loading } = useScriptsStore();
   
-  const { scripts, loading, error } = useScriptStore()
-  const { settings } = useSettingsStore()
-
-  // Load initial data
   useEffect(() => {
-    // Scripts and settings are loaded by their respective stores
-  }, [])
-
-  const handleScriptSelect = (script: Script) => {
-    setSelectedScript(script)
-    setActiveView('editor')
-  }
-
-  const handleScriptCreate = () => {
-    setSelectedScript(null)
-    setActiveView('editor')
-  }
-
-  const handleBackToList = () => {
-    setSelectedScript(null)
-    setActiveView('list')
-  }
-
-  const handleScriptSave = (script: Script) => {
-    // Script saving is handled by the store
-    setActiveView('list')
-  }
-
-  if (loading) {
-    return (
-      <div className="app">
-        <Header />
-        <div className="loading">
-          <div className="spinner" />
-          <p>Loading ScriptFlow...</p>
+    loadScripts();
+    
+    // Keyboard shortcut for command palette
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandPaletteOpen(true);
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+  
+  return (
+    <div className="flex h-screen bg-gray-900 text-white">
+      {/* Left Sidebar */}
+      <aside className="w-64 bg-gray-800 border-r border-gray-700 flex flex-col">
+        {/* Logo */}
+        <div className="p-6 border-b border-gray-700">
+          <h1 className="text-2xl font-bold text-blue-500">ScriptFlow</h1>
         </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="app">
-        <Header />
-        <div className="error">
-          <p>Error loading ScriptFlow: {error}</p>
-          <button onClick={() => window.location.reload()}>
-            Retry
+        
+        {/* Navigation */}
+        <nav className="flex-1 p-4 space-y-2">
+          <NavItem
+            icon="📜"
+            label="Scripts"
+            active={view === 'scripts'}
+            onClick={() => setView('scripts')}
+            shortcut="⌘1"
+          />
+          
+          <NavItem
+            icon="✏️"
+            label="Editor"
+            active={view === 'editor'}
+            onClick={() => setView('editor')}
+            shortcut="⌘2"
+          />
+          
+          <NavItem
+            icon="🐛"
+            label="Debug"
+            active={view === 'debug'}
+            onClick={() => setView('debug')}
+            shortcut="⌘3"
+          />
+        </nav>
+        
+        {/* Command Palette Button */}
+        <div className="p-4 border-t border-gray-700">
+          <button
+            onClick={() => setCommandPaletteOpen(true)}
+            className="w-full flex items-center justify-between px-4 py-3 bg-gray-700 rounded-lg hover:bg-gray-600 transition-colors"
+          >
+            <div className="flex items-center gap-3">
+              <span className="text-xl">⌘</span>
+              <span>Command Palette</span>
+            </div>
+            <span className="text-xs text-gray-500">⌘K</span>
           </button>
         </div>
-        <Footer />
-      </div>
-    )
-  }
-
-  return (
-    <div className="app">
-      <Header 
-        onSettingsClick={() => setActiveView('settings')}
-        onNewScriptClick={handleScriptCreate}
-        onSchedulingClick={() => setActiveView('scheduling')}
-      />
+      </aside>
       
-      <main className="main-content">
-        {activeView === 'list' && (
-          <ScriptList
-            scripts={scripts}
-            onScriptSelect={handleScriptSelect}
-            onScriptCreate={handleScriptCreate}
-          />
-        )}
-        
-        {activeView === 'editor' && (
-          <ScriptEditor
-            script={selectedScript}
-            onSave={handleScriptSave}
-            onCancel={handleBackToList}
-          />
-        )}
-        
-        {activeView === 'settings' && (
-          <div className="settings-placeholder">
-            <h2>Settings</h2>
-            <p>Settings panel coming soon...</p>
-            <button onClick={() => setActiveView('list')}>
-              Back to Scripts
-            </button>
+      {/* Main Content Area */}
+      <main className="flex-1 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center h-full">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
           </div>
-        )}
-        
-        {activeView === 'scheduling' && (
-          <SchedulingPanel />
+        ) : (
+          <>
+            {view === 'scripts' && <ScriptList />}
+            {view === 'editor' && <ScriptEditor />}
+            {view === 'debug' && <DebugConsole />}
+          </>
         )}
       </main>
       
-      <Footer />
+      {/* Command Palette Overlay */}
+      {commandPaletteOpen && (
+        <CommandPalette onClose={() => setCommandPaletteOpen(false)} />
+      )}
     </div>
-  )
+  );
+}
+
+interface NavItemProps {
+  icon: string;
+  label: string;
+  active: boolean;
+  onClick: () => void;
+  shortcut?: string;
+}
+
+function NavItem({ icon, label, active, onClick, shortcut }: NavItemProps) {
+  return (
+    <button
+      onClick={onClick}
+      className={`
+        w-full flex items-center justify-between px-4 py-3 rounded-lg
+        transition-all duration-200
+        ${active 
+          ? 'bg-blue-500/20 text-blue-500 font-semibold' 
+          : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+        }
+      `}
+    >
+      <div className="flex items-center gap-3">
+        <span className="text-xl">{icon}</span>
+        <span>{label}</span>
+      </div>
+      
+      {shortcut && (
+        <span className="text-xs text-gray-500">{shortcut}</span>
+      )}
+    </button>
+  );
 }

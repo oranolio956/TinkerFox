@@ -1,160 +1,111 @@
-/**
- * ScriptFlow Script List Component
- * 
- * Displays list of scripts with management options
- */
+// import React from 'react';
+import { useScriptsStore } from '@/lib/scripts-store';
+import { UserScript } from '@/types';
 
-import React, { useState } from 'react'
-import { Play, Pause, Edit, Trash2, MoreVertical } from 'lucide-react'
-import { useScriptStore } from '../hooks/useScriptStore'
-import type { Script } from '@/types'
-
-interface ScriptListProps {
-  scripts: Script[]
-  onScriptSelect: (script: Script) => void
-  onScriptCreate: () => void
-}
-
-export function ScriptList({ scripts, onScriptSelect, onScriptCreate }: ScriptListProps): JSX.Element {
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filterEnabled, setFilterEnabled] = useState<'all' | 'enabled' | 'disabled'>('all')
+export function ScriptList() {
+  const { scripts, loading } = useScriptsStore();
   
-  const { toggleScript, deleteScript } = useScriptStore()
-
-  const filteredScripts = scripts.filter(script => {
-    const matchesSearch = script.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         script.description?.toLowerCase().includes(searchTerm.toLowerCase())
-    
-    const matchesFilter = filterEnabled === 'all' || 
-                         (filterEnabled === 'enabled' && script.enabled) ||
-                         (filterEnabled === 'disabled' && !script.enabled)
-    
-    return matchesSearch && matchesFilter
-  })
-
-  const handleToggleScript = async (script: Script) => {
-    try {
-      await toggleScript(script.id, !script.enabled)
-    } catch (error) {
-      console.error('Failed to toggle script:', error)
-    }
-  }
-
-  const handleDeleteScript = async (script: Script) => {
-    if (confirm(`Are you sure you want to delete "${script.name}"?`)) {
-      try {
-        await deleteScript(script.id)
-      } catch (error) {
-        console.error('Failed to delete script:', error)
-      }
-    }
-  }
-
-  return (
-    <div className="script-list">
-      <div className="script-list-header">
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="Search scripts..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="search-input"
-          />
-        </div>
-        
-        <div className="filter-tabs">
-          <button
-            className={`filter-tab ${filterEnabled === 'all' ? 'active' : ''}`}
-            onClick={() => setFilterEnabled('all')}
-          >
-            All ({scripts.length})
-          </button>
-          <button
-            className={`filter-tab ${filterEnabled === 'enabled' ? 'active' : ''}`}
-            onClick={() => setFilterEnabled('enabled')}
-          >
-            Enabled ({scripts.filter(s => s.enabled).length})
-          </button>
-          <button
-            className={`filter-tab ${filterEnabled === 'disabled' ? 'active' : ''}`}
-            onClick={() => setFilterEnabled('disabled')}
-          >
-            Disabled ({scripts.filter(s => !s.enabled).length})
-          </button>
-        </div>
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500" />
       </div>
-
-      <div className="script-list-content">
-        {filteredScripts.length === 0 ? (
-          <div className="empty-state">
-            <p>No scripts found</p>
-            <button className="create-button" onClick={onScriptCreate}>
-              Create your first script
-            </button>
+    );
+  }
+  
+  return (
+    <div className="h-full flex flex-col bg-gray-900">
+      {/* Header */}
+      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4">
+        <h2 className="text-lg font-semibold text-white">Your Scripts</h2>
+        <p className="text-sm text-gray-400">{scripts.length} scripts installed</p>
+      </div>
+      
+      {/* Script List */}
+      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+        {scripts.length === 0 ? (
+          <div className="text-center text-gray-500 py-12">
+            <p className="text-xl mb-2">No scripts yet</p>
+            <p className="text-sm">Create your first script or import from Tampermonkey</p>
           </div>
         ) : (
-          <div className="script-items">
-            {filteredScripts.map(script => (
-              <div key={script.id} className="script-item">
-                <div className="script-item-main" onClick={() => onScriptSelect(script)}>
-                  <div className="script-item-header">
-                    <h3 className="script-name">{script.name}</h3>
-                    <div className="script-actions">
-                      <button
-                        className={`toggle-button ${script.enabled ? 'enabled' : 'disabled'}`}
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleToggleScript(script)
-                        }}
-                        title={script.enabled ? 'Disable' : 'Enable'}
-                      >
-                        {script.enabled ? <Play size={14} /> : <Pause size={14} />}
-                      </button>
-                      
-                      <button
-                        className="action-button"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          onScriptSelect(script)
-                        }}
-                        title="Edit"
-                      >
-                        <Edit size={14} />
-                      </button>
-                      
-                      <button
-                        className="action-button danger"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleDeleteScript(script)
-                        }}
-                        title="Delete"
-                      >
-                        <Trash2 size={14} />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {script.description && (
-                    <p className="script-description">{script.description}</p>
-                  )}
-                  
-                  <div className="script-meta">
-                    <span className="script-version">v{script.version}</span>
-                    {script.author && (
-                      <span className="script-author">by {script.author}</span>
-                    )}
-                    <span className="script-executions">
-                      {script.executionCount} executions
-                    </span>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+          scripts.map(script => (
+            <ScriptCard key={script.id} script={script} />
+          ))
         )}
       </div>
     </div>
-  )
+  );
+}
+
+interface ScriptCardProps {
+  script: UserScript;
+}
+
+function ScriptCard({ script }: ScriptCardProps) {
+  const { selectScript, toggleScript, deleteScript } = useScriptsStore();
+  
+  return (
+    <div className="bg-gray-800 rounded-lg p-4 border border-gray-700 hover:border-gray-600 transition-colors">
+      {/* Header */}
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => toggleScript(script.id)}
+            className={`w-4 h-4 rounded-full border-2 transition-colors ${
+              script.enabled 
+                ? 'bg-green-500 border-green-500' 
+                : 'border-gray-500'
+            }`}
+          />
+          <div>
+            <h3 className="font-semibold text-white">{script.name}</h3>
+            <p className="text-sm text-gray-400">v{script.version}</p>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => selectScript(script.id)}
+            className="px-3 py-1 bg-blue-500 rounded text-sm hover:bg-blue-600 transition-colors text-white"
+          >
+            Edit
+          </button>
+          <button
+            onClick={() => deleteScript(script.id)}
+            className="px-3 py-1 bg-red-500 rounded text-sm hover:bg-red-600 transition-colors text-white"
+          >
+            Delete
+          </button>
+        </div>
+      </div>
+      
+      {/* Description */}
+      {script.metadata.description && (
+        <p className="text-sm text-gray-300 mb-3">{script.metadata.description}</p>
+      )}
+      
+      {/* Metadata */}
+      <div className="flex flex-wrap gap-2 text-xs">
+        {script.metadata.match.slice(0, 2).map((pattern, idx) => (
+          <span key={idx} className="bg-gray-700 px-2 py-1 rounded text-gray-300">
+            {pattern}
+          </span>
+        ))}
+        {script.metadata.match.length > 2 && (
+          <span className="bg-gray-700 px-2 py-1 rounded text-gray-300">
+            +{script.metadata.match.length - 2} more
+          </span>
+        )}
+      </div>
+      
+      {/* Stats */}
+      <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+        <span>Runs: {script.runCount}</span>
+        {script.lastRunAt && (
+          <span>Last run: {new Date(script.lastRunAt).toLocaleDateString()}</span>
+        )}
+      </div>
+    </div>
+  );
 }

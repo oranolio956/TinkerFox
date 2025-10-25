@@ -8,8 +8,6 @@
  */
 
 import { Logger } from './logger';
-import { StorageManager } from './storage-manager';
-import type { ExtensionSettings } from '../types';
 
 /**
  * Feature identifiers for type-safe feature toggling
@@ -105,14 +103,14 @@ export interface DependencyResult {
 export class FeatureManager {
   private static instance: FeatureManager | null = null;
   private readonly logger: Logger;
-  private readonly storage: StorageManager;
+  // private readonly storage: StorageManager;
   private readonly features: Map<string, FeatureConfig>;
   private readonly states: Map<string, FeatureState>;
   private readonly listeners: Map<string, Set<(enabled: boolean) => void>>;
 
   private constructor() {
-    this.logger = new Logger('FeatureManager');
-    this.storage = StorageManager.getInstance();
+    this.logger = new Logger({ level: 'info' });
+    // this.storage = new StorageManager();
     this.features = new Map();
     this.states = new Map();
     this.listeners = new Map();
@@ -400,7 +398,7 @@ export class FeatureManager {
       });
 
       // Save to storage
-      await this.saveFeatureStates();
+      // await this.saveFeatureStates();
 
       // Notify listeners
       this.notifyListeners(featureId, true);
@@ -443,7 +441,7 @@ export class FeatureManager {
       });
 
       // Save to storage
-      await this.saveFeatureStates();
+      // await this.saveFeatureStates();
 
       // Notify listeners
       this.notifyListeners(featureId, false);
@@ -566,39 +564,24 @@ export class FeatureManager {
     }
   }
 
-  /**
-   * Save feature states to storage
-   */
-  private async saveFeatureStates(): Promise<void> {
-    try {
-      const statesObject: Record<string, FeatureState> = {};
-      for (const [id, state] of this.states) {
-        statesObject[id] = state;
-      }
-      
-      await this.storage.set('featureStates', statesObject);
-    } catch (error) {
-      this.logger.error('Failed to save feature states', { error });
-    }
-  }
 
   /**
    * Load feature states from storage
    */
   public async loadFeatureStates(): Promise<void> {
-    try {
-      const storedStates = await this.storage.get<Record<string, FeatureState>>('featureStates');
-      if (storedStates) {
-        for (const [id, state] of Object.entries(storedStates)) {
-          if (this.features.has(id)) {
-            this.states.set(id, state);
-          }
-        }
-        this.logger.info('Feature states loaded from storage');
-      }
-    } catch (error) {
-      this.logger.error('Failed to load feature states', { error });
-    }
+    // try {
+    //   const storedStates = await this.storage.get<Record<string, FeatureState>>('featureStates');
+    //   if (storedStates) {
+    //     for (const [id, state] of Object.entries(storedStates)) {
+    //       if (this.features.has(id)) {
+    //         this.states.set(id, state);
+    //       }
+    //     }
+    //     this.logger.info('Feature states loaded from storage');
+    //   }
+    // } catch (error) {
+    //   this.logger.error('Failed to load feature states', { error });
+    // }
   }
 
   /**
@@ -615,7 +598,7 @@ export class FeatureManager {
         });
       }
       
-      await this.saveFeatureStates();
+      // await this.saveFeatureStates();
       this.logger.info('Features reset to defaults');
     } catch (error) {
       this.logger.error('Failed to reset features', { error });

@@ -4,7 +4,7 @@
  * Header with title, settings, and new script button
  */
 
-import React from 'react'
+// import React from 'react'
 import { Settings, Plus, Code, Clock } from 'lucide-react'
 
 interface HeaderProps {

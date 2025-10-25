@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import { viteStaticCopy } from 'vite-plugin-static-copy'
-import { resolve } from 'path'
 
 export default defineConfig({
   plugins: [
@@ -19,10 +18,9 @@ export default defineConfig({
     outDir: 'dist',
     rollupOptions: {
       input: {
-        popup: resolve(__dirname, 'src/popup/index.html'),
-        options: resolve(__dirname, 'src/options/index.html'),
-        background: resolve(__dirname, 'src/background/service_worker.ts'),
-        content: resolve(__dirname, 'src/content/scripts/content.ts')
+        popup: 'src/popup/index.html',
+        background: 'src/background/service_worker.ts',
+        content: 'src/content/scripts/content.ts'
       },
       output: {
         entryFileNames: (chunkInfo) => {
@@ -44,13 +42,13 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': resolve(__dirname, 'src'),
-      '@/types': resolve(__dirname, 'src/types'),
-      '@/lib': resolve(__dirname, 'src/lib'),
-      '@/components': resolve(__dirname, 'src/popup/components')
+      '@': '/src',
+      '@/types': '/src/types',
+      '@/lib': '/src/lib',
+      '@/components': '/src/popup/components'
     }
   },
   define: {
-    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development')
+    'process.env.NODE_ENV': JSON.stringify('development')
   }
 })

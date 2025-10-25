@@ -4,7 +4,7 @@
  * Footer with status and quick actions
  */
 
-import React from 'react'
+// import React from 'react'
 import { Activity, Settings } from 'lucide-react'
 
 export function Footer(): JSX.Element {

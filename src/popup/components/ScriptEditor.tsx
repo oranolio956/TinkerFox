@@ -1,241 +1,190 @@
-/**
- * ScriptFlow Script Editor Component
- * 
- * Monaco editor for script editing with syntax highlighting
- */
+import { useEffect, useRef, useState } from 'react';
+import Editor, { Monaco } from '@monaco-editor/react';
+import { useScriptsStore } from '@/lib/scripts-store';
+import * as monaco from 'monaco-editor';
 
-import React, { useState, useEffect } from 'react'
-import { Editor } from '@monaco-editor/react'
-import { Save, X, Play, Settings } from 'lucide-react'
-import { useScriptStore } from '../hooks/useScriptStore'
-import type { Script } from '@/types'
-
-interface ScriptEditorProps {
-  script: Script | null
-  onSave: (script: Script) => void
-  onCancel: () => void
-}
-
-export function ScriptEditor({ script, onSave, onCancel }: ScriptEditorProps): JSX.Element {
-  const [formData, setFormData] = useState({
-    name: '',
-    description: '',
-    version: '1.0.0',
-    author: '',
-    code: '',
-    language: 'javascript' as const,
-    matches: ['<all_urls>'],
-    enabled: true
-  })
+export function ScriptEditor() {
+  const { selectedScript, updateScript } = useScriptsStore();
+  const [code, setCode] = useState(selectedScript?.code || '');
+  const [hasChanges, setHasChanges] = useState(false);
+  const editorRef = useRef<monaco.editor.IStandaloneCodeEditor | null>(null);
   
-  const [isSaving, setIsSaving] = useState(false)
-  const { createScript, updateScript } = useScriptStore()
-
-  // Initialize form data when script changes
+  // Auto-save timer
+  const saveTimerRef = useRef<number>();
+  
   useEffect(() => {
-    if (script) {
-      setFormData({
-        name: script.name,
-        description: script.description || '',
-        version: script.version,
-        author: script.author || '',
-        code: script.code,
-        language: script.language,
-        matches: script.matches,
-        enabled: script.enabled
-      })
-    } else {
-      setFormData({
-        name: '',
-        description: '',
-        version: '1.0.0',
-        author: '',
-        code: '// Write your script here\nconsole.log("Hello, ScriptFlow!");',
-        language: 'javascript',
-        matches: ['<all_urls>'],
-        enabled: true
-      })
+    if (selectedScript) {
+      setCode(selectedScript.code);
+      setHasChanges(false);
     }
-  }, [script])
-
-  const handleSave = async () => {
-    setIsSaving(true)
-    try {
-      const scriptData = {
-        ...formData,
-        matches: formData.matches.filter(m => m.trim() !== ''),
-        updatedAt: Date.now()
+  }, [selectedScript?.id]);
+  
+  // Auto-save every 2 seconds
+  useEffect(() => {
+    if (!hasChanges || !selectedScript) return;
+    
+    clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(async () => {
+      await updateScript(selectedScript.id, code);
+      setHasChanges(false);
+    }, 2000);
+    
+    return () => clearTimeout(saveTimerRef.current);
+  }, [code, hasChanges]);
+  
+  // Manual save shortcut (Cmd+S)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (selectedScript) {
+          updateScript(selectedScript.id, code);
+          setHasChanges(false);
+        }
       }
-
-      if (script) {
-        const updatedScript = await updateScript(script.id, scriptData)
-        onSave(updatedScript)
-      } else {
-        const newScript = await createScript(scriptData)
-        onSave(newScript)
-      }
-    } catch (error) {
-      console.error('Failed to save script:', error)
-    } finally {
-      setIsSaving(false)
-    }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [code, selectedScript]);
+  
+  // Configure Monaco on mount
+  function handleEditorMount(editor: monaco.editor.IStandaloneCodeEditor, monacoInstance: Monaco) {
+    editorRef.current = editor;
+    
+    // Custom userscript language support
+    monacoInstance.languages.register({ id: 'userscript' });
+    
+    // Syntax highlighting for metadata
+    monacoInstance.languages.setMonarchTokensProvider('userscript', {
+      tokenizer: {
+        root: [
+          [/\/\/ ==UserScript==/, 'comment.metadata'],
+          [/\/\/ @\w+/, 'keyword.metadata'],
+          [/\/\/ ==\/UserScript==/, 'comment.metadata'],
+          [/\/\/.*$/, 'comment'],
+        ],
+      },
+    });
+    
+    // Auto-complete for metadata
+    monacoInstance.languages.registerCompletionItemProvider('userscript', {
+      provideCompletionItems: (model, position) => {
+        const word = model.getWordUntilPosition(position);
+        const range = {
+          startLineNumber: position.lineNumber,
+          endLineNumber: position.lineNumber,
+          startColumn: word.startColumn,
+          endColumn: word.endColumn,
+        };
+        
+        const suggestions = [
+          {
+            label: '@name',
+            kind: monacoInstance.languages.CompletionItemKind.Keyword,
+            insertText: '@name ${1:Script Name}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '@match',
+            kind: monacoInstance.languages.CompletionItemKind.Keyword,
+            insertText: '@match ${1:*://*/*}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '@grant',
+            kind: monacoInstance.languages.CompletionItemKind.Keyword,
+            insertText: '@grant ${1:GM_getValue}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+          {
+            label: '@version',
+            kind: monacoInstance.languages.CompletionItemKind.Keyword,
+            insertText: '@version ${1:1.0.0}',
+            insertTextRules: monacoInstance.languages.CompletionItemInsertTextRule.InsertAsSnippet,
+            range,
+          },
+        ];
+        
+        return { suggestions };
+      },
+    });
+    
+    // Format on paste
+    editor.onDidPaste(() => {
+      editor.getAction('editor.action.formatDocument')?.run();
+    });
   }
-
-  const handleCodeChange = (value: string | undefined) => {
-    setFormData(prev => ({ ...prev, code: value || '' }))
+  
+  if (!selectedScript) {
+    return (
+      <div className="flex items-center justify-center h-full text-gray-500">
+        <div className="text-center">
+          <p className="text-xl mb-2">No script selected</p>
+          <p className="text-sm">Select a script from the list or create a new one</p>
+        </div>
+      </div>
+    );
   }
-
-  const handleInputChange = (field: string, value: string) => {
-    setFormData(prev => ({ ...prev, [field]: value }))
-  }
-
-  const handleMatchesChange = (value: string) => {
-    const matches = value.split('\n').filter(m => m.trim() !== '')
-    setFormData(prev => ({ ...prev, matches }))
-  }
-
+  
   return (
-    <div className="script-editor">
-      <div className="script-editor-header">
-        <div className="editor-title">
-          {script ? 'Edit Script' : 'New Script'}
+    <div className="h-full flex flex-col">
+      {/* Editor Header */}
+      <div className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h2 className="text-lg font-semibold text-white">{selectedScript.name}</h2>
+          <p className="text-sm text-gray-400">
+            v{selectedScript.version} • Last updated {new Date(selectedScript.updatedAt).toLocaleDateString()}
+          </p>
         </div>
         
-        <div className="editor-actions">
-          <button
-            className="action-button"
-            onClick={handleSave}
-            disabled={isSaving}
-            title="Save Script"
-          >
-            <Save size={16} />
-            {isSaving ? 'Saving...' : 'Save'}
-          </button>
+        <div className="flex items-center gap-4">
+          {hasChanges && (
+            <span className="text-sm text-yellow-500">Unsaved changes</span>
+          )}
           
           <button
-            className="action-button"
-            onClick={onCancel}
-            title="Cancel"
+            onClick={() => updateScript(selectedScript.id, code)}
+            className="px-4 py-2 bg-blue-500 rounded-lg hover:bg-blue-600 transition-colors text-white"
           >
-            <X size={16} />
-            Cancel
+            Save (⌘S)
           </button>
         </div>
       </div>
-
-      <div className="script-editor-content">
-        <div className="script-form">
-          <div className="form-row">
-            <div className="form-group">
-              <label>Script Name</label>
-              <input
-                type="text"
-                value={formData.name}
-                onChange={(e) => handleInputChange('name', e.target.value)}
-                placeholder="Enter script name"
-                className="form-input"
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Version</label>
-              <input
-                type="text"
-                value={formData.version}
-                onChange={(e) => handleInputChange('version', e.target.value)}
-                placeholder="1.0.0"
-                className="form-input"
-              />
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>Description</label>
-            <input
-              type="text"
-              value={formData.description}
-              onChange={(e) => handleInputChange('description', e.target.value)}
-              placeholder="Enter script description"
-              className="form-input"
-            />
-          </div>
-
-          <div className="form-row">
-            <div className="form-group">
-              <label>Author</label>
-              <input
-                type="text"
-                value={formData.author}
-                onChange={(e) => handleInputChange('author', e.target.value)}
-                placeholder="Your name"
-                className="form-input"
-              />
-            </div>
-            
-            <div className="form-group">
-              <label>Language</label>
-              <select
-                value={formData.language}
-                onChange={(e) => handleInputChange('language', e.target.value)}
-                className="form-select"
-              >
-                <option value="javascript">JavaScript</option>
-                <option value="typescript">TypeScript</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="form-group">
-            <label>URL Matches (one per line)</label>
-            <textarea
-              value={formData.matches.join('\n')}
-              onChange={(e) => handleMatchesChange(e.target.value)}
-              placeholder="<all_urls>"
-              className="form-textarea"
-              rows={3}
-            />
-          </div>
-
-          <div className="form-group">
-            <label className="checkbox-label">
-              <input
-                type="checkbox"
-                checked={formData.enabled}
-                onChange={(e) => handleInputChange('enabled', e.target.checked.toString())}
-              />
-              Enable this script
-            </label>
-          </div>
-        </div>
-
-        <div className="code-editor">
-          <div className="editor-header">
-            <span>Script Code</span>
-            <div className="editor-info">
-              {formData.language === 'typescript' ? 'TypeScript' : 'JavaScript'}
-            </div>
-          </div>
-          
-          <div className="monaco-container">
-            <Editor
-              height="300px"
-              language={formData.language}
-              value={formData.code}
-              onChange={handleCodeChange}
-              theme="vs-dark"
-              options={{
-                minimap: { enabled: false },
-                fontSize: 14,
-                lineNumbers: 'on',
-                wordWrap: 'on',
-                automaticLayout: true,
-                scrollBeyondLastLine: false,
-                padding: { top: 16, bottom: 16 }
-              }}
-            />
-          </div>
-        </div>
+      
+      {/* Monaco Editor */}
+      <div className="flex-1">
+        <Editor
+          height="100%"
+          language="javascript"
+          theme="vs-dark"
+          value={code}
+          onChange={(value) => {
+            setCode(value || '');
+            setHasChanges(true);
+          }}
+          onMount={handleEditorMount}
+          options={{
+            fontSize: 13,
+            fontFamily: 'Fira Code, JetBrains Mono, Consolas, monospace',
+            minimap: { enabled: true },
+            lineNumbers: 'on',
+            rulers: [80, 120],
+            wordWrap: 'on',
+            formatOnType: true,
+            formatOnPaste: true,
+            tabSize: 2,
+            insertSpaces: true,
+            scrollBeyondLastLine: false,
+            smoothScrolling: true,
+            cursorBlinking: 'smooth',
+            cursorSmoothCaretAnimation: 'on',
+          }}
+        />
       </div>
     </div>
-  )
+  );
 }

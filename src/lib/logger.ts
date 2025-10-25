@@ -281,7 +281,7 @@ export class Logger {
 
 // Global logger instance
 export const logger = new Logger({
-  level: process.env.NODE_ENV === 'development' ? 'debug' : 'info',
+  level: 'info',
   enableConsole: true,
   enableStorage: true,
   maxStorageEntries: 1000
