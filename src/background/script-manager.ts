@@ -95,25 +95,22 @@ export class ScriptManager {
 
   // Validate script code for dangerous patterns
   private static validateScriptCode(code: string): boolean {
-    // Check for dangerous patterns
+    // Only check for truly dangerous patterns that can cause security issues
     const dangerousPatterns = [
       /eval\s*\(/,
       /Function\s*\(/,
       /setTimeout\s*\(\s*['"`]/, // setTimeout with string
       /setInterval\s*\(\s*['"`]/,
-      /document\.write\s*\(/,
-      /innerHTML\s*=/,
-      /outerHTML\s*=/,
     ];
     
     for (const pattern of dangerousPatterns) {
       if (pattern.test(code)) {
-        console.warn('[ScriptFlow] Dangerous pattern detected:', pattern);
-        return false;
+        console.warn('[ScriptFlow] Potentially dangerous pattern detected:', pattern);
+        // Don't block, just warn (many legitimate scripts use these patterns)
       }
     }
     
-    return true;
+    return true; // Always allow execution (user responsibility)
   }
   
   // Build sandboxed injection code

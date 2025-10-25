@@ -37,7 +37,12 @@ export default defineConfig({
           return '[name]/[name].js'
         },
         chunkFileNames: '[name]/[name].js',
-        assetFileNames: '[name]/[name].[ext]'
+        assetFileNames: (assetInfo) => {
+          if (assetInfo.name?.endsWith('.html')) {
+            return '[name].html';
+          }
+          return '[name]/[name].[ext]';
+        }
       }
     },
     target: 'es2022',
