@@ -11,6 +11,8 @@ export interface UserScript {
   version: string;               // From @version
   updateUrl: string | null;      // From @updateURL
   downloadUrl: string | null;    // From @downloadURL
+  tags: string[];                // User-defined tags
+  category: string;              // Script category
 }
 
 export interface ScriptMetadata {
@@ -61,6 +63,15 @@ export interface Settings {
   githubSyncEnabled: boolean;
   githubToken?: string;
   githubRepo?: string;
+}
+
+export interface ScriptAnalytics {
+  id: number;                    // Auto-increment ID
+  scriptId: string;              // Foreign key to UserScript
+  metric: string;                // Metric name (execution_time, memory_usage, etc.)
+  value: number;                 // Metric value
+  timestamp: number;             // When metric was recorded
+  metadata?: Record<string, any>; // Additional metric data
 }
 
 export interface Command {

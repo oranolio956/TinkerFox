@@ -5,10 +5,12 @@ import { initializeDatabase } from '@/lib/database';
 import { db } from '@/lib/database';
 import { ScriptStorage } from '@/lib/script-storage';
 import { Message, MessageResponse } from '@/types/messages';
+import { validateMessage, sanitizeScriptCode } from '@/lib/validation';
+import { logger } from '@/lib/logger';
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async (details) => {
-  console.log('[ScriptFlow] Extension installed/updated');
+  logger.info('Extension installed/updated', { reason: details.reason });
   
   // Initialize database
   await initializeDatabase();
@@ -48,56 +50,69 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;  // Keep channel open for async response
 });
 
-async function handleMessage(message: Message, _sender: chrome.runtime.MessageSender): Promise<MessageResponse> {
+async function handleMessage(message: unknown, _sender: chrome.runtime.MessageSender): Promise<MessageResponse> {
   try {
-    switch (message.type) {
+    // Validate input message
+    const validation = validateMessage(message);
+    if (!validation.success) {
+      return { success: false, error: validation.error };
+    }
+    
+    const validatedMessage = validation.data;
+    
+    switch (validatedMessage.type) {
       case 'GET_ALL_SCRIPTS':
         const scripts = await ScriptStorage.getAllScripts();
         return { success: true, scripts };
       
       case 'GET_SCRIPTS_FOR_TAB':
-        const tabScripts = await ScriptManager.getScriptsForTab(message.tabId);
+        const tabScripts = await ScriptManager.getScriptsForTab(validatedMessage.tabId);
         return { success: true, scripts: tabScripts };
       
       case 'CREATE_SCRIPT':
-        const newScript = await ScriptStorage.createScript(message.code);
+        const sanitizedCode = sanitizeScriptCode(validatedMessage.code);
+        const newScript = await ScriptStorage.createScript(sanitizedCode);
         return { success: true, script: newScript };
       
       case 'UPDATE_SCRIPT':
-        await ScriptStorage.updateScript(message.id, message.code, message.changelog);
+        const sanitizedUpdateCode = sanitizeScriptCode(validatedMessage.code);
+        await ScriptStorage.updateScript(validatedMessage.id, sanitizedUpdateCode, validatedMessage.changelog);
         return { success: true };
       
       case 'DELETE_SCRIPT':
-        await ScriptStorage.deleteScript(message.id);
+        await ScriptStorage.deleteScript(validatedMessage.id);
         return { success: true };
     
-    case 'TOGGLE_SCRIPT':
-      const enabled = await ScriptStorage.toggleScript(message.id);
-      return { enabled };
-    
-    case 'INJECT_SCRIPT':
-      return ScriptManager.injectScript(message.tabId, message.scriptId);
-    
-    case 'REQUEST_PERMISSION':
-      return PermissionManager.requestPermission(message.permission);
-    
-    case 'CHECK_UPDATES':
-      return UpdateChecker.checkScript(message.scriptId);
-    
+      case 'TOGGLE_SCRIPT':
+        const enabled = await ScriptStorage.toggleScript(validatedMessage.id);
+        return { success: true, enabled };
+      
+      case 'INJECT_SCRIPT':
+        await ScriptManager.injectScript(validatedMessage.script.id, validatedMessage.grants);
+        return { success: true };
+      
+      case 'REQUEST_PERMISSION':
+        const permissionGranted = await PermissionManager.requestPermission(validatedMessage.permission);
+        return { success: true, granted: permissionGranted };
+      
+      case 'CHECK_UPDATES':
+        const updateResult = await UpdateChecker.checkScript(validatedMessage.scriptId);
+        return { success: true, hasUpdate: updateResult };
+      
       case 'GET_EXECUTION_LOGS':
-        const logs = await getExecutionLogs(message.filter);
+        const logs = await getExecutionLogs(validatedMessage.filter);
         return { success: true, ...logs };
       
       case 'GM_XHR_REQUEST':
-        const xhrResponse = await handleGMXHRRequest(message.details);
+        const xhrResponse = await handleGMXHRRequest(validatedMessage.details);
         return { success: true, response: xhrResponse };
       
       case 'GM_NOTIFICATION':
-        await handleGMNotification(message.options);
+        await handleGMNotification(validatedMessage.options);
         return { success: true };
       
       case 'GET_SCRIPTS_FOR_URL':
-        const urlScripts = await ScriptManager.getScriptsForUrl(message.url);
+        const urlScripts = await ScriptManager.getScriptsForUrl(validatedMessage.url);
         return { success: true, scripts: urlScripts };
       
       default:
@@ -107,7 +122,7 @@ async function handleMessage(message: Message, _sender: chrome.runtime.MessageSe
         };
     }
   } catch (error) {
-    console.error('[ScriptFlow] Message handler error:', error);
+    logger.error('Message handler error:', error);
     return { 
       success: false, 
       error: error instanceof Error ? error.message : 'Unknown error' 

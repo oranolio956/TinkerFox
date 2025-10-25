@@ -1,11 +1,11 @@
 // Content Script - The execution layer that makes userscripts actually work
 // This is the missing piece that makes ScriptFlow functional
 
-console.log('[ScriptFlow] Content script loaded');
+// Content script loaded - use minimal logging to avoid console pollution
 
 // Listen for messages from background script
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  console.log('[ScriptFlow] Received message:', message.type);
+  // Message received - minimal logging
   
   switch (message.type) {
     case 'PING':
@@ -43,7 +43,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 // Inject a userscript into the page
 function handleScriptInjection(script: { id: string; code: string; grants: string[] }, grants: string[]) {
   try {
-    console.log(`[ScriptFlow] Injecting script ${script.id}`);
+    // Injecting script
     
     // Build GM API code
     const gmApiCode = buildGMAPICode(grants);
@@ -77,10 +77,10 @@ function handleScriptInjection(script: { id: string; code: string; grants: strin
       }
     }, 100);
     
-    console.log(`[ScriptFlow] Successfully injected script ${script.id}`);
+    // Script injected successfully
     
   } catch (error) {
-    console.error(`[ScriptFlow] Failed to inject script ${script.id}:`, error);
+    console.error(`Script injection failed for ${script.id}:`, error);
     
     // Report error to background
     chrome.runtime.sendMessage({
