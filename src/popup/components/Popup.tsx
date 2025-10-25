@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useScriptsStore } from '../hooks/useScriptsStore';
 import { ScriptList } from './ScriptList';
 import { ScriptEditor } from './ScriptEditor';
