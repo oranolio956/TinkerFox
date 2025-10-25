@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useScriptsStore } from '../hooks/useScriptsStore';
+import { useScriptsStore } from '@/lib/scripts-store';
 
 interface ExecutionLog {
   id: string;

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useScriptsStore } from '../hooks/useScriptsStore';
+import { useScriptsStore } from '@/lib/scripts-store';
 import { ScriptList } from './ScriptList';
 import { ScriptEditor } from './ScriptEditor';
 import { CommandPalette } from './CommandPalette';
@@ -41,7 +41,7 @@ export function Popup() {
   }
 
   return (
-    <div className="w-96 h-96 bg-gray-900 text-white flex flex-col">
+    <div className="w-full h-full bg-gray-900 text-white flex flex-col">
       <Header 
         activeTab={activeTab} 
         onTabChange={setActiveTab}

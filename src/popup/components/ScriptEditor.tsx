@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useScriptsStore } from '../hooks/useScriptsStore';
+import { useScriptsStore } from '@/lib/scripts-store';
 
 export function ScriptEditor() {
   const { selectedScript, updateScript } = useScriptsStore();
@@ -34,7 +34,7 @@ export function ScriptEditor() {
       if (selectedScript) {
         setIsSaving(true);
         try {
-          await updateScript(selectedScript.id, code);
+          await updateScript(selectedScript.id, code, 'Auto-save');
           setHasChanges(false);
         } catch (error) {
           console.error('Failed to save script:', error);
@@ -71,7 +71,7 @@ export function ScriptEditor() {
 
     setIsSaving(true);
     try {
-      await updateScript(selectedScript.id, code);
+      await updateScript(selectedScript.id, code, 'Manual save');
       setHasChanges(false);
     } catch (error) {
       console.error('Failed to save script:', error);

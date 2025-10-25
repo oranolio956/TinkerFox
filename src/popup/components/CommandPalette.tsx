@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useScriptsStore } from '../hooks/useScriptsStore';
+import { useScriptsStore } from '@/lib/scripts-store';
 
 interface Command {
   id: string;

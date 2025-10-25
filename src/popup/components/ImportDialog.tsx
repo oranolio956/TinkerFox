@@ -1,5 +1,5 @@
 import { useState, useRef } from 'react';
-import { useScriptsStore } from '../hooks/useScriptsStore';
+import { useScriptsStore } from '@/lib/scripts-store';
 
 interface ImportDialogProps {
   onClose: () => void;

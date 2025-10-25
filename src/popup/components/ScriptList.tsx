@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useScriptsStore } from '../hooks/useScriptsStore';
+import { useScriptsStore } from '@/lib/scripts-store';
 import { ScriptCard } from './ScriptCard';
 import { ImportDialog } from './ImportDialog';
 
