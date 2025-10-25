@@ -4,6 +4,7 @@ import { UpdateChecker } from './update-checker';
 import { initializeDatabase } from '@/lib/database';
 import { db } from '@/lib/database';
 import { ScriptStorage } from '@/lib/script-storage';
+import { Message, MessageResponse } from '@/types/messages';
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async (details) => {
@@ -47,26 +48,28 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   return true;  // Keep channel open for async response
 });
 
-async function handleMessage(message: any, _sender: chrome.runtime.MessageSender) {
-  switch (message.type) {
-    case 'GET_ALL_SCRIPTS':
-      const scripts = await ScriptStorage.getAllScripts();
-      return { scripts };
-    
-    case 'GET_SCRIPTS_FOR_TAB':
-      return ScriptManager.getScriptsForTab(message.tabId);
-    
-    case 'CREATE_SCRIPT':
-      const newScript = await ScriptStorage.createScript(message.code);
-      return { script: newScript };
-    
-    case 'UPDATE_SCRIPT':
-      await ScriptStorage.updateScript(message.id, message.code, message.changelog);
-      return { success: true };
-    
-    case 'DELETE_SCRIPT':
-      await ScriptStorage.deleteScript(message.id);
-      return { success: true };
+async function handleMessage(message: Message, _sender: chrome.runtime.MessageSender): Promise<MessageResponse> {
+  try {
+    switch (message.type) {
+      case 'GET_ALL_SCRIPTS':
+        const scripts = await ScriptStorage.getAllScripts();
+        return { success: true, scripts };
+      
+      case 'GET_SCRIPTS_FOR_TAB':
+        const tabScripts = await ScriptManager.getScriptsForTab(message.tabId);
+        return { success: true, scripts: tabScripts };
+      
+      case 'CREATE_SCRIPT':
+        const newScript = await ScriptStorage.createScript(message.code);
+        return { success: true, script: newScript };
+      
+      case 'UPDATE_SCRIPT':
+        await ScriptStorage.updateScript(message.id, message.code, message.changelog);
+        return { success: true };
+      
+      case 'DELETE_SCRIPT':
+        await ScriptStorage.deleteScript(message.id);
+        return { success: true };
     
     case 'TOGGLE_SCRIPT':
       const enabled = await ScriptStorage.toggleScript(message.id);
@@ -81,20 +84,34 @@ async function handleMessage(message: any, _sender: chrome.runtime.MessageSender
     case 'CHECK_UPDATES':
       return UpdateChecker.checkScript(message.scriptId);
     
-    case 'GET_EXECUTION_LOGS':
-      return getExecutionLogs(message.filter);
-    
-    case 'GM_XHR_REQUEST':
-      return handleGMXHRRequest(message.details);
-    
-    case 'GM_NOTIFICATION':
-      return handleGMNotification(message.options);
-    
-    case 'GET_SCRIPTS_FOR_URL':
-      return ScriptManager.getScriptsForUrl(message.url);
-    
-    default:
-      throw new Error(`Unknown message type: ${message.type}`);
+      case 'GET_EXECUTION_LOGS':
+        const logs = await getExecutionLogs(message.filter);
+        return { success: true, ...logs };
+      
+      case 'GM_XHR_REQUEST':
+        const xhrResponse = await handleGMXHRRequest(message.details);
+        return { success: true, response: xhrResponse };
+      
+      case 'GM_NOTIFICATION':
+        await handleGMNotification(message.options);
+        return { success: true };
+      
+      case 'GET_SCRIPTS_FOR_URL':
+        const urlScripts = await ScriptManager.getScriptsForUrl(message.url);
+        return { success: true, scripts: urlScripts };
+      
+      default:
+        return { 
+          success: false, 
+          error: `Unknown message type: ${message.type}` 
+        };
+    }
+  } catch (error) {
+    console.error('[ScriptFlow] Message handler error:', error);
+    return { 
+      success: false, 
+      error: error instanceof Error ? error.message : 'Unknown error' 
+    };
   }
 }
 
@@ -111,19 +128,21 @@ async function getExecutionLogs(filter?: string) {
       executions = executions.filter(e => e.scriptId === filter);
     }
     
-    // Get script names for each execution
-    const logs = await Promise.all(executions.map(async (execution) => {
-      const script = await db.scripts.get(execution.scriptId);
-      return {
-        id: execution.id,
-        scriptId: execution.scriptId,
-        scriptName: script?.name || 'Unknown Script',
-        url: execution.url,
-        success: execution.success,
-        error: execution.error,
-        executionTime: execution.executionTime,
-        timestamp: execution.timestamp,
-      };
+    // Batch fetch all unique script IDs to avoid N+1 query problem
+    const scriptIds = [...new Set(executions.map(e => e.scriptId))];
+    const scripts = await db.scripts.bulkGet(scriptIds);
+    const scriptMap = new Map(scripts.filter(s => s).map(s => [s!.id, s!]));
+    
+    // Map executions to logs without additional queries
+    const logs = executions.map(execution => ({
+      id: execution.id,
+      scriptId: execution.scriptId,
+      scriptName: scriptMap.get(execution.scriptId)?.name || 'Unknown Script',
+      url: execution.url,
+      success: execution.success,
+      error: execution.error,
+      executionTime: execution.executionTime,
+      timestamp: execution.timestamp,
     }));
     
     return { logs };

@@ -8,6 +8,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   console.log('[ScriptFlow] Received message:', message.type);
   
   switch (message.type) {
+    case 'PING':
+      // Respond to ping to indicate content script is ready
+      sendResponse({ success: true, ready: true });
+      break;
+      
     case 'INJECT_SCRIPT':
       handleScriptInjection(message.script, message.grants);
       sendResponse({ success: true });
@@ -94,8 +99,17 @@ function buildGMAPICode(grants: string[]): string {
   if (grants.includes('GM_getValue') || grants.includes('GM.getValue')) {
     apiCode.push(`
       const GM_getValue = function(key, defaultValue) {
-        const stored = localStorage.getItem('GM_' + key);
-        return stored ? JSON.parse(stored) : defaultValue;
+        return new Promise((resolve) => {
+          chrome.storage.local.get(['GM_' + key], (result) => {
+            try {
+              const value = result['GM_' + key];
+              resolve(value !== undefined ? value : defaultValue);
+            } catch (error) {
+              console.error('[ScriptFlow] GM_getValue error:', error);
+              resolve(defaultValue);
+            }
+          });
+        });
       };
       const GM = { getValue: GM_getValue };
     `);
@@ -105,7 +119,21 @@ function buildGMAPICode(grants: string[]): string {
   if (grants.includes('GM_setValue') || grants.includes('GM.setValue')) {
     apiCode.push(`
       const GM_setValue = function(key, value) {
-        localStorage.setItem('GM_' + key, JSON.stringify(value));
+        return new Promise((resolve, reject) => {
+          try {
+            chrome.storage.local.set({ ['GM_' + key]: value }, () => {
+              if (chrome.runtime.lastError) {
+                console.error('[ScriptFlow] GM_setValue error:', chrome.runtime.lastError);
+                reject(chrome.runtime.lastError);
+              } else {
+                resolve();
+              }
+            });
+          } catch (error) {
+            console.error('[ScriptFlow] GM_setValue error:', error);
+            reject(error);
+          }
+        });
       };
       if (typeof GM !== 'undefined') {
         GM.setValue = GM_setValue;
@@ -117,7 +145,16 @@ function buildGMAPICode(grants: string[]): string {
   if (grants.includes('GM_deleteValue')) {
     apiCode.push(`
       const GM_deleteValue = function(key) {
-        localStorage.removeItem('GM_' + key);
+        return new Promise((resolve, reject) => {
+          chrome.storage.local.remove(['GM_' + key], () => {
+            if (chrome.runtime.lastError) {
+              console.error('[ScriptFlow] GM_deleteValue error:', chrome.runtime.lastError);
+              reject(chrome.runtime.lastError);
+            } else {
+              resolve();
+            }
+          });
+        });
       };
     `);
   }
@@ -126,14 +163,19 @@ function buildGMAPICode(grants: string[]): string {
   if (grants.includes('GM_listValues')) {
     apiCode.push(`
       const GM_listValues = function() {
-        const keys = [];
-        for (let i = 0; i < localStorage.length; i++) {
-          const key = localStorage.key(i);
-          if (key && key.startsWith('GM_')) {
-            keys.push(key.substring(3));
-          }
-        }
-        return keys;
+        return new Promise((resolve, reject) => {
+          chrome.storage.local.get(null, (items) => {
+            if (chrome.runtime.lastError) {
+              console.error('[ScriptFlow] GM_listValues error:', chrome.runtime.lastError);
+              reject(chrome.runtime.lastError);
+            } else {
+              const keys = Object.keys(items)
+                .filter(key => key.startsWith('GM_'))
+                .map(key => key.substring(3));
+              resolve(keys);
+            }
+          });
+        });
       };
     `);
   }

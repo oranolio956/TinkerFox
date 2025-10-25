@@ -29,12 +29,13 @@ export class ScriptManager {
         await this.injectScript(tabId, script.id);
       }
       
-      // Idle scripts after page fully loads
-      setTimeout(async () => {
+      // Idle scripts after page fully loads - wait for content script to be ready
+      if (documentIdle.length > 0) {
+        await this.waitForContentScriptReady(tabId);
         for (const script of documentIdle) {
           await this.injectScript(tabId, script.id);
         }
-      }, 100);
+      }
       
     } catch (error) {
       console.error('[ScriptFlow] Injection error:', error);
@@ -98,6 +99,28 @@ export class ScriptManager {
     }
   }
 
+  // Wait for content script to be ready
+  private static async waitForContentScriptReady(tabId: number): Promise<boolean> {
+    const maxRetries = 10;
+    const retryDelay = 100; // 100ms
+    
+    for (let i = 0; i < maxRetries; i++) {
+      try {
+        // Send a ping to content script
+        const response = await chrome.tabs.sendMessage(tabId, { type: 'PING' });
+        if (response && response.success) {
+          return true;
+        }
+      } catch (error) {
+        // Content script not ready yet, wait and retry
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
+    }
+    
+    console.warn('[ScriptFlow] Content script not ready after maximum retries');
+    return false;
+  }
+
   // Validate script code for dangerous patterns
   private static validateScriptCode(code: string): boolean {
     // Only check for truly dangerous patterns that can cause security issues
@@ -120,6 +143,13 @@ export class ScriptManager {
   
   // Build sandboxed injection code
   private static buildInjectionCode(script: UserScript): string {
+    // Escape script metadata to prevent code injection
+    const escapedName = this.escapeForScript(script.name);
+    const escapedNamespace = this.escapeForScript(script.metadata.namespace || '');
+    const escapedVersion = this.escapeForScript(script.version);
+    const escapedDescription = this.escapeForScript(script.metadata.description || '');
+    const escapedAuthor = this.escapeForScript(script.metadata.author || '');
+    
     // Wrap script in IIFE to prevent global pollution
     return `
       (function() {
@@ -128,11 +158,11 @@ export class ScriptManager {
         // Metadata
         const GM_info = {
           script: {
-            name: ${JSON.stringify(script.name)},
-            namespace: ${JSON.stringify(script.metadata.namespace || '')},
-            version: ${JSON.stringify(script.version)},
-            description: ${JSON.stringify(script.metadata.description || '')},
-            author: ${JSON.stringify(script.metadata.author || '')},
+            name: '${escapedName}',
+            namespace: '${escapedNamespace}',
+            version: '${escapedVersion}',
+            description: '${escapedDescription}',
+            author: '${escapedAuthor}',
           },
           scriptHandler: 'ScriptFlow',
           version: '1.0.0',
@@ -142,6 +172,19 @@ export class ScriptManager {
         ${script.code}
       })();
     `;
+  }
+
+  // Escape script metadata to prevent code injection
+  private static escapeForScript(str: string): string {
+    return str
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\'")
+      .replace(/"/g, '\\"')
+      .replace(/</g, '\\x3C')
+      .replace(/>/g, '\\x3E')
+      .replace(/\n/g, '\\n')
+      .replace(/\r/g, '\\r')
+      .replace(/\t/g, '\\t');
   }
   
   // This function runs in the page context
