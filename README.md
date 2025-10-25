@@ -60,6 +60,85 @@ const schedule = await scheduler.createSchedule({
 });
 ```
 
+## 🚀 Script Execution Engine
+
+ScriptFlow features a bulletproof script execution engine designed for security, performance, and reliability in production environments.
+
+### Core Architecture
+
+- **MV3 Compliance**: Uses only `chrome.scripting.executeScript` with proper world isolation
+- **CSP Safety**: No inline scripts, no eval, no remote script fetching
+- **Security Hardening**: Comprehensive validation and sanitization
+- **Performance Monitoring**: Real-time performance tracking and limits
+- **Error Recovery**: Intelligent retry logic with exponential backoff
+- **Memory Management**: Automatic cleanup and leak prevention
+
+### Execution Pipeline
+
+1. **Feature Gating**: Check if script execution is enabled
+2. **Script Validation**: Validate script code and metadata
+3. **URL Matching**: Verify script matches current URL patterns
+4. **Performance Checks**: Ensure execution within performance limits
+5. **Context Management**: Create isolated execution context
+6. **Safe Execution**: Execute script using Chrome scripting API
+7. **Error Handling**: Capture and handle any execution errors
+8. **Cleanup**: Clean up resources and update statistics
+
+### Security Features
+
+- **Script Validation**: Prevents dangerous patterns and CSP violations
+- **Sandboxed Execution**: Scripts run in isolated contexts
+- **Input Sanitization**: All user inputs are validated and sanitized
+- **Memory Limits**: Prevents memory leaks and resource exhaustion
+- **Execution Timeouts**: Prevents infinite loops and hanging scripts
+
+### Performance Features
+
+- **Lazy Injection**: Scripts only inject when absolutely necessary
+- **Concurrent Limits**: Prevents resource exhaustion from too many scripts
+- **Performance Monitoring**: Tracks execution time, memory usage, and CPU time
+- **Automatic Cleanup**: Removes old execution contexts and metrics
+- **Optimization Suggestions**: Provides recommendations for script optimization
+
+### Example: Safe Script Execution
+
+```typescript
+// Execute a script safely
+const result = await scriptExecutor.executeScript({
+  scriptId: 'my-script',
+  tabId: 123,
+  url: 'https://example.com/page',
+  forceExecution: false
+});
+
+if (result.success) {
+  console.log('Script executed successfully:', result.result);
+} else {
+  console.error('Script execution failed:', result.error);
+}
+```
+
+### Error Handling
+
+The execution engine provides comprehensive error handling:
+
+- **Validation Errors**: Script code or metadata validation failures
+- **Security Errors**: CSP violations or dangerous pattern detection
+- **Execution Errors**: Runtime errors during script execution
+- **Timeout Errors**: Script execution timeouts
+- **Permission Errors**: Chrome API permission issues
+- **Memory Errors**: Memory limit exceeded or leaks detected
+
+### Performance Monitoring
+
+Track script performance with detailed metrics:
+
+- **Execution Time**: How long scripts take to execute
+- **Memory Usage**: Memory consumption per script
+- **Success Rate**: Percentage of successful executions
+- **Error Patterns**: Common error types and frequencies
+- **Performance Warnings**: Automatic detection of performance issues
+
 ## 🔧 Feature Gating System
 
 ScriptFlow includes a comprehensive feature management system that allows you to enable/disable capabilities independently with full dependency resolution.
@@ -135,6 +214,18 @@ ScriptFlow/
 │   │   ├── features.ts          # Feature gating system
 │   │   └── __tests__/           # Unit tests
 │   │       └── scheduler-core.test.ts
+│   ├── engine/                  # Script execution engine
+│   │   ├── script-executor.ts   # Core execution engine
+│   │   ├── url-matcher.ts       # URL pattern matching
+│   │   ├── script-validator.ts  # Script validation & security
+│   │   ├── execution-context.ts # Execution context management
+│   │   ├── error-handler.ts     # Error detection & recovery
+│   │   ├── performance-monitor.ts # Performance tracking
+│   │   ├── index.ts             # Engine exports
+│   │   └── __tests__/           # Execution engine tests
+│   │       ├── script-executor.test.ts
+│   │       ├── url-matcher.test.ts
+│   │       └── integration.test.ts
 │   └── types/
 │       ├── index.ts             # Core type definitions
 │       └── scheduling.ts        # Scheduling system types

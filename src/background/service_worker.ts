@@ -47,13 +47,57 @@ chrome.runtime.onStartup.addListener(async () => {
   console.log('ScriptFlow started')
   await storageManager.initialize()
   await scriptManager.loadScripts()
+  
+  // Initialize execution engine
+  await initializeExecutionEngine()
 })
 
 // Tab management
 chrome.tabs.onUpdated.addListener(async (tabId, changeInfo, tab) => {
   if (changeInfo.status === 'complete' && tab.url) {
+    console.log('Tab updated:', tabId, tab.url)
+    
+    // Update tab state
     await tabManager.handleTabUpdate(tabId, tab)
-    await scriptManager.executeScriptsForTab(tabId, tab)
+    
+    // Update execution context
+    executionContextManager.updateTabState(
+      tabId,
+      tab.url,
+      'complete',
+      true // documentReady
+    )
+    
+    // Check if ScriptFlow is enabled for this tab
+    if (await tabManager.isScriptFlowEnabled(tabId)) {
+      try {
+        // Execute scripts using the execution engine
+        const results = await scriptExecutor.executeScriptsForTab(tabId, tab.url)
+        
+        console.log('Scripts executed for tab:', tabId, {
+          totalScripts: results.length,
+          successful: results.filter(r => r.success).length,
+          failed: results.filter(r => !r.success).length,
+        })
+        
+        // Log any execution errors
+        for (const result of results) {
+          if (!result.success) {
+            console.error('Script execution failed:', result.error)
+          }
+        }
+      } catch (error) {
+        console.error('Failed to execute scripts for tab:', tabId, error)
+      }
+    }
+  } else if (changeInfo.status === 'loading' && tab.url) {
+    // Update tab state for loading
+    executionContextManager.updateTabState(
+      tabId,
+      tab.url,
+      'loading',
+      false // documentReady
+    )
   }
 })
 
@@ -104,8 +148,40 @@ chrome.alarms.onAlarm.addListener(async (alarm) => {
 // Web navigation handling
 chrome.webNavigation.onCompleted.addListener(async (details) => {
   if (details.frameId === 0) { // Main frame only
-    await scriptManager.executeScriptsForNavigation(details.tabId, details.url)
+    console.log('Navigation completed:', details.tabId, details.url)
+    
+    // Update execution context
+    executionContextManager.updateTabState(
+      details.tabId,
+      details.url,
+      'complete',
+      true // documentReady
+    )
+    
+    // Check if ScriptFlow is enabled for this tab
+    if (await tabManager.isScriptFlowEnabled(details.tabId)) {
+      try {
+        // Execute scripts using the execution engine
+        const results = await scriptExecutor.executeScriptsForTab(details.tabId, details.url)
+        
+        console.log('Scripts executed for navigation:', details.tabId, {
+          totalScripts: results.length,
+          successful: results.filter(r => r.success).length,
+          failed: results.filter(r => !r.success).length,
+        })
+      } catch (error) {
+        console.error('Failed to execute scripts for navigation:', details.tabId, error)
+      }
+    }
   }
+})
+
+// Extension shutdown cleanup
+chrome.runtime.onSuspend.addListener(() => {
+  console.log('ScriptFlow suspending, cleaning up...')
+  scriptExecutor.cleanup()
+  executionContextManager.clearAll()
+  performanceMonitor.clearOldData()
 })
 
 /**
@@ -119,6 +195,9 @@ async function initializeExtension(): Promise<void> {
     // Create welcome script
     await scriptManager.createWelcomeScript()
     
+    // Initialize execution engine
+    await initializeExecutionEngine()
+    
     // Show welcome notification
     chrome.notifications.create({
       type: 'basic',
@@ -130,6 +209,27 @@ async function initializeExtension(): Promise<void> {
     console.log('ScriptFlow initialized successfully')
   } catch (error) {
     console.error('Failed to initialize ScriptFlow:', error)
+  }
+}
+
+/**
+ * Initialize the script execution engine
+ */
+async function initializeExecutionEngine(): Promise<void> {
+  try {
+    // Clear old execution data
+    executionContextManager.clearAll()
+    performanceMonitor.clearOldData()
+    
+    // Set up periodic cleanup
+    setInterval(() => {
+      executionContextManager.cleanupOldContexts()
+      performanceMonitor.clearOldData()
+    }, 5 * 60 * 1000) // Every 5 minutes
+    
+    console.log('Script execution engine initialized')
+  } catch (error) {
+    console.error('Failed to initialize execution engine:', error)
   }
 }
 
