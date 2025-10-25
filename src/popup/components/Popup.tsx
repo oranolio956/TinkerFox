@@ -8,9 +8,8 @@ import { Header } from './Header';
 import { Footer } from './Footer';
 
 export function Popup() {
-  const [activeTab, setActiveTab] = useState<'scripts' | 'editor' | 'debug'>('scripts');
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const { loadScripts, loading } = useScriptsStore();
+  const { loadScripts, loading, activeTab, setActiveTab } = useScriptsStore();
 
   useEffect(() => {
     loadScripts();

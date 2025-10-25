@@ -52,7 +52,8 @@
       "resources": [
         "content/injections/*",
         "lib/*",
-        "icons/*"
+        "icons/*",
+        "node_modules/monaco-editor/**/*"
       ],
       "matches": ["<all_urls>"]
     }

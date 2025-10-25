@@ -5,6 +5,7 @@ interface ScriptsState {
   scripts: UserScript[];
   loading: boolean;
   selectedScript: UserScript | null;
+  activeTab: 'scripts' | 'editor' | 'debug';
   
   // Actions
   loadScripts: () => Promise<void>;
@@ -13,12 +14,14 @@ interface ScriptsState {
   updateScript: (id: string, code: string) => Promise<void>;
   deleteScript: (id: string) => Promise<void>;
   toggleScript: (id: string) => Promise<void>;
+  setActiveTab: (tab: 'scripts' | 'editor' | 'debug') => void;
 }
 
 export const useScriptsStore = create<ScriptsState>((set, get) => ({
   scripts: [],
   loading: false,
   selectedScript: null,
+  activeTab: 'scripts',
   
   loadScripts: async () => {
     set({ loading: true });
@@ -106,5 +109,9 @@ export const useScriptsStore = create<ScriptsState>((set, get) => ({
       console.error('Failed to toggle script:', error);
       throw error;
     }
+  },
+  
+  setActiveTab: (tab: 'scripts' | 'editor' | 'debug') => {
+    set({ activeTab: tab });
   },
 }));

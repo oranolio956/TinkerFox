@@ -62,16 +62,19 @@ export function CommandPalette({ onClose }: CommandPaletteProps) {
       category: 'Quick Actions',
     },
     // Script Navigation
-    ...scripts.map(script => ({
-      id: `script-${script.id}`,
-      label: script.name,
-      icon: script.enabled ? '🟢' : '🔴',
-      action: () => {
-        selectScript(script.id);
-        onClose();
-      },
-      category: 'Your Scripts',
-    })),
+        ...scripts.map(script => ({
+          id: `script-${script.id}`,
+          label: script.name,
+          icon: script.enabled ? '🟢' : '🔴',
+          action: () => {
+            selectScript(script.id);
+            // Switch to editor tab
+            const { setActiveTab } = useScriptsStore.getState();
+            setActiveTab('editor');
+            onClose();
+          },
+          category: 'Your Scripts',
+        })),
   ];
 
   // Filter commands based on query

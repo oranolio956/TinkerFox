@@ -4,7 +4,7 @@ import { ScriptCard } from './ScriptCard';
 import { ImportDialog } from './ImportDialog';
 
 export function ScriptList() {
-  const { scripts, createScript, deleteScript, toggleScript, updateScript } = useScriptsStore();
+  const { scripts, createScript, deleteScript, toggleScript, updateScript, loadScripts } = useScriptsStore();
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [sortBy, setSortBy] = useState<'name' | 'lastRun' | 'created' | 'enabled'>('name');
@@ -61,9 +61,19 @@ export function ScriptList() {
   const handleEnableAll = async () => {
     try {
       const disabledScripts = scripts.filter(s => !s.enabled);
-      for (const script of disabledScripts) {
-        await toggleScript(script.id);
-      }
+      
+      // Batch toggle without reloading each time
+      await Promise.all(
+        disabledScripts.map(s => 
+          chrome.runtime.sendMessage({
+            type: 'TOGGLE_SCRIPT',
+            id: s.id
+          })
+        )
+      );
+      
+      // Reload ONCE at the end
+      await loadScripts();
     } catch (error) {
       console.error('Failed to enable all scripts:', error);
     }
@@ -72,13 +82,54 @@ export function ScriptList() {
   const handleDisableAll = async () => {
     try {
       const enabledScripts = scripts.filter(s => s.enabled);
-      for (const script of enabledScripts) {
-        await toggleScript(script.id);
-      }
+      
+      // Batch toggle without reloading each time
+      await Promise.all(
+        enabledScripts.map(s => 
+          chrome.runtime.sendMessage({
+            type: 'TOGGLE_SCRIPT',
+            id: s.id
+          })
+        )
+      );
+      
+      // Reload ONCE at the end
+      await loadScripts();
     } catch (error) {
       console.error('Failed to disable all scripts:', error);
     }
   };
+
+  const handleExport = async () => {
+    try {
+      const data = {
+        scripts: scripts.map(script => ({
+          name: script.name,
+          code: script.code,
+          enabled: script.enabled,
+          version: script.version,
+          metadata: script.metadata,
+        })),
+        exportedAt: new Date().toISOString(),
+        version: '1.0.0'
+      };
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `scriptflow-backup-${Date.now()}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export scripts:', error);
+    }
+  };
+
+  // Reset selectedIndex when filtered list changes
+  useEffect(() => {
+    setSelectedIndex(0);
+  }, [searchQuery, sortBy, sortOrder]);
 
   // Keyboard navigation
   useEffect(() => {
@@ -130,6 +181,12 @@ export function ScriptList() {
             className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded transition-colors"
           >
             Disable All
+          </button>
+          <button
+            onClick={handleExport}
+            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded transition-colors"
+          >
+            Export All
           </button>
         </div>
         

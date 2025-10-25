@@ -7,6 +7,7 @@ export function ScriptEditor() {
   const [code, setCode] = useState('');
   const [hasChanges, setHasChanges] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [monacoError, setMonacoError] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const saveTimeoutRef = useRef<number>();
 
@@ -86,6 +87,11 @@ export function ScriptEditor() {
     setHasChanges(true);
   };
 
+  const handleMonacoError = () => {
+    console.warn('Monaco Editor failed to load, falling back to textarea');
+    setMonacoError(true);
+  };
+
   if (!selectedScript) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-gray-400">
@@ -130,39 +136,51 @@ export function ScriptEditor() {
 
       {/* Code Editor */}
       <div className="flex-1">
-        <Editor
-          height="100%"
-          language="javascript"
-          theme="vs-dark"
-          value={code}
-          onChange={handleCodeChange}
-          options={{
-            fontSize: 13,
-            fontFamily: 'Fira Code, JetBrains Mono, Consolas, monospace',
-            minimap: { enabled: true },
-            lineNumbers: 'on',
-            rulers: [80, 120],
-            wordWrap: 'on',
-            formatOnType: true,
-            formatOnPaste: true,
-            tabSize: 2,
-            insertSpaces: true,
-            scrollBeyondLastLine: false,
-            smoothScrolling: true,
-            cursorBlinking: 'smooth',
-            cursorSmoothCaretAnimation: 'on',
-            automaticLayout: true,
-            suggest: {
-              showKeywords: true,
-              showSnippets: true,
-            },
-            quickSuggestions: {
-              other: true,
-              comments: false,
-              strings: true,
-            },
-          }}
-        />
+        {monacoError ? (
+          <textarea
+            ref={textareaRef}
+            value={code}
+            onChange={(e) => handleCodeChange(e.target.value)}
+            className="w-full h-full bg-gray-900 text-white p-4 font-mono text-sm resize-none border-none outline-none"
+            placeholder="// Start typing your script here..."
+            style={{ fontFamily: 'Fira Code, JetBrains Mono, Consolas, monospace' }}
+          />
+        ) : (
+          <Editor
+            height="100%"
+            language="javascript"
+            theme="vs-dark"
+            value={code}
+            onChange={handleCodeChange}
+            onMountError={handleMonacoError}
+            options={{
+              fontSize: 13,
+              fontFamily: 'Fira Code, JetBrains Mono, Consolas, monospace',
+              minimap: { enabled: true },
+              lineNumbers: 'on',
+              rulers: [80, 120],
+              wordWrap: 'on',
+              formatOnType: true,
+              formatOnPaste: true,
+              tabSize: 2,
+              insertSpaces: true,
+              scrollBeyondLastLine: false,
+              smoothScrolling: true,
+              cursorBlinking: 'smooth',
+              cursorSmoothCaretAnimation: 'on',
+              automaticLayout: true,
+              suggest: {
+                showKeywords: true,
+                showSnippets: true,
+              },
+              quickSuggestions: {
+                other: true,
+                comments: false,
+                strings: true,
+              },
+            }}
+          />
+        )}
       </div>
 
       {/* Editor Footer */}
